@@ -3,8 +3,8 @@
 Numerical exploration of the degree-seven parabolic counterexample whose
 critically marked portrait closure has an irreducible cusp.
 
-**Current stage: M01 — the local numerical family.** There is a command-line
-inspector and a Python API. The two-window graphical explorer is the next
+**Current stage: M01.1 — rescaled local coordinates.** There is a command-line
+inspector, a Python API, and native-complex local evaluation kernels. The graphical explorer is the next
 stage; this version does not render Julia sets or a parameter image.
 
 The intended interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn):
@@ -29,6 +29,9 @@ python -m polynomial_cusps --orbit 20
 
 # A nearby complex parameter.
 python -m polynomial_cusps --real 0.1 --imag 0.03 --dps 60 --orbit 40
+
+# Tiny separations, logarithmic sizes, and stable multiplier/return data.
+python -m polynomial_cusps --real 1e-8 --dps 60 --orbit 0 --rescaled
 ```
 
 The output is JSON containing polynomial coefficients (ascending powers), all
@@ -58,6 +61,55 @@ print(point.f(z))
 Every point has an independent mpmath context. Operations do not change the
 global precision. `orbit` includes its starting point and stops early after
 crossing a conservative escape bound.
+
+## Rescaled local maps
+
+Prepare references at high precision, then evaluate in local coordinates:
+
+```python
+from polynomial_cusps import RescaledFamily, solve_family
+
+reference = RescaledFamily(solve_family("1e-8", dps=60))
+kernels = reference.binary64()       # conversion happens once
+xi = complex(0.31, 0.17)
+
+value_position = kernels.zero_to_values(xi)
+cycle_position = kernels.values_to_cycle(value_position)
+next_position = kernels.cycle(cycle_position)  # carries measured residuals
+
+# Explicitly impose the exact portrait, instead of hiding residuals:
+portrait_next = kernels.cycle.portrait_map(xi)
+M = kernels.cycle.portrait_multiplier_defect_scaled()  # (mu-1)/Delta^2
+K = kernels.cycle.portrait_return_drift_scaled(xi)     # (H^2(xi)-xi)/Delta^2
+
+structured_point = reference.charts["cycle"].at(xi)
+report = reference.report()          # factored scales, phases, residuals
+```
+
+`structured_point` retains its center, scale, and position separately. Calling
+`.absolute()` explicitly materializes the sum at reference precision. Passing
+that sum through ordinary binary64 can erase its local displacement.
+
+The four arrows are `zero_to_values`, `one_to_values`, `values_to_cycle`,
+and `cycle`. Native kernels use Python's built-in complex arithmetic and do
+not call mpmath during evaluation. They are intended for bounded local
+positions; this stage does not implement automatic chart switching or a
+global Julia renderer. Binary64 scale underflow raises an error. The
+high-precision factored scale and its logarithm remain available.
+
+Quantities named `portrait_*` use the exact cycle identities. The default
+cycle map includes measured endpoint residuals. The report shows how much
+the raw derivative product differs from the portrait multiplier: this can
+exceed the t^24 signal even when the original t^12 portrait checks pass.
+It is not an interval error bound or a classification of the free orbit.
+
+At t=0 the four charts collapse. Only formal limits of their normalized
+kernels are available; use the global polynomial g for actual dynamics.
+Neither rescaling nor the stable return-drift calculation accelerates time:
+the typical local drift per return is still O(t^24).
+
+See [docs/RESCALING.md](docs/RESCALING.md) for the exact formulas, precision
+interpretation, and verification strategy.
 
 ## Mathematical coordinates
 
@@ -136,6 +188,10 @@ python -m unittest discover -s tests -v
 The suite checks the explicit boundary map, criticality, original dynamical
 relations, the divided period-two equation, independent quadrature, the
 collapsing orders, conjugation symmetry, precision stability, a tiny parameter,
-and the console interface. GitHub Actions runs it on Python 3.10, 3.12, and 3.13.
+and the console interface. It also compares all four local maps, the scaled
+multiplier and second return with direct high-precision computations, checks
+residual propagation on a deliberately perturbed polynomial, and exercises
+binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
+3.12, and 3.13.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

@@ -13,6 +13,21 @@ critical/cycle gaps, and compare low/high precision solutions. This is a
 numerical implementation of the local construction, not a proof of a uniform
 validity radius.
 
+## M01.1 — rescaled coordinates (implemented)
+
+- Four affine charts with separate centers and factored complex scales.
+- Stable local maps for both critical clusters, the critical values, and the cycle.
+- Explicit raw-polynomial residuals; portrait-constrained quantities are named separately.
+- Stable (mu-1)/Delta^2 and (H^2(xi)-xi)/Delta^2 without subtracting nearly equal values.
+- High-precision preprocessing with optional native-complex evaluation kernels.
+- Logarithmic scale magnitudes and phases; explicit boundary and underflow handling.
+
+Acceptance: compare each local map with the original polynomial at high
+precision, including a nonreal parameter and t=1e-8; compare scaled return
+and multiplier data with sufficiently precise independent subtraction;
+verify that deliberate portrait errors remain visible. See
+[RESCALING.md](RESCALING.md).
+
 ## M02 — dynamical window
 
 - Render an approximation of J(f_t) and optionally shade the filled Julia set.
@@ -25,6 +40,10 @@ validity radius.
 - Keep parameter construction at high precision. Use accelerated ordinary
   precision rendering where adequate, with an explicit high-precision path
   when the chosen zoom or iteration behavior requires it.
+- Build on M01.1 references and kernels. Carry residual diagnostics into
+  the UI; do not silently replace a computed polynomial by the constrained
+  portrait map. Local O(t^24) slowness needs a separate iteration budget and
+  future controlled acceleration, not only a spatial zoom.
 
 Acceptance: g and at least one nonzero complex sample display consistently;
 finite iteration is not presented as a proof of Julia or basin membership.

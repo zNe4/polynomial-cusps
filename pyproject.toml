@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polynomial-cusps"
+version = "0.1.0"
+description = "Numerical exploration of a degree-seven parabolic portrait cusp"
+requires-python = ">=3.10"
+dependencies = ["mpmath>=1.3,<2"]
+
+[project.scripts]
+polynomial-cusps = "polynomial_cusps.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["polynomial_cusps*"]

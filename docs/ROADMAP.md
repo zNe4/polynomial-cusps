@@ -28,7 +28,7 @@ and multiplier data with sufficiently precise independent subtraction;
 verify that deliberate portrait errors remain visible. See
 [RESCALING.md](RESCALING.md).
 
-## M02 — dynamical window
+## M02 — dynamical window (implemented)
 
 - Render an approximation of J(f_t) and optionally shade the filled Julia set.
 - Use a valid escape bound for the general degree-seven polynomial; a fixed
@@ -48,6 +48,13 @@ verify that deliberate portrait errors remain visible. See
 Acceptance: g and at least one nonzero complex sample display consistently;
 finite iteration is not presented as a proof of Julia or basin membership.
 Keep the dynamical viewport fixed when switching parameters.
+
+Implemented with NumPy/Pillow rendering and a cancellable Tk event loop.
+The four local maps carry measured polynomial residuals. Guarded native
+evaluation restarts problematic pixels in the original polynomial at
+reference precision; deep zooms and scale underflow can use MP directly.
+The finite-time unresolved state remains explicit. PNG exports include the
+numerical snapshot and metadata. See [DYNAMICAL_EXPLORER.md](DYNAMICAL_EXPLORER.md).
 
 ## M03 — parameter window
 

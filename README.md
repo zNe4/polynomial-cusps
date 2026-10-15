@@ -3,11 +3,12 @@
 Numerical exploration of the degree-seven parabolic counterexample whose
 critically marked portrait closure has an irreducible cusp.
 
-**Current stage: M01.1 — rescaled local coordinates.** There is a command-line
-inspector, a Python API, and native-complex local evaluation kernels. The graphical explorer is the next
-stage; this version does not render Julia sets or a parameter image.
+**Current stage: M02 — the dynamical explorer.** There is a Tk window with
+finite-time Julia/escape views, critical points, prescribed and free orbits,
+local rescaled views, point iteration, zoom, and PNG/JSON export. The
+parameter-plane image and click-to-select parameter window are planned for M03.
 
-The intended interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn):
+The intended two-plane interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn):
 select a complex parameter on the left and inspect its Julia set, marked
 critical points, prescribed orbits, and free critical orbit on the right.
 This repository currently implements the family independently; no source code
@@ -33,6 +34,44 @@ python -m polynomial_cusps --real 0.1 --imag 0.03 --dps 60 --orbit 40
 # Tiny separations, logarithmic sizes, and stable multiplier/return data.
 python -m polynomial_cusps --real 1e-8 --dps 60 --orbit 0 --rescaled
 ```
+
+### Open the graphical explorer
+
+Install Tk from your operating system (`sudo pacman -S tk` on Arch Linux,
+or `sudo apt install python3-tk` on Ubuntu/Debian), then install the GUI extras:
+
+```bash
+python -m pip install -e '.[gui]'
+python -m polynomial_cusps --gui
+# Or start at a selected parameter:
+python -m polynomial_cusps --gui --real 0.08 --imag 0.06 --orbit 40
+```
+
+The installed `polynomial-cusps-gui` command opens the same application.
+A graphical display is required. The numerical console remains available
+without NumPy, Pillow, or Tk.
+
+- Enter Re(t), Im(t), decimal accuracy, and free-orbit length; press **Aplicar**.
+- Use **Volver a g** to restore the boundary polynomial.
+- Choose **Global**, either critical cluster, the critical values, or the cycle.
+  Local charts require nonzero t. Switching parameters preserves the current
+  viewport unless returning to g makes the local chart collapse.
+- Click to select a dynamical point; use **Iterar z** or Space to apply f.
+  Space retains its normal behavior in text inputs. **Elegir omega** selects
+  the free critical point.
+- Drag a rectangle or use the wheel / + / - buttons to zoom.
+- Toggle critical markers, the prescribed orbit graph, free-orbit points,
+  labels, and finite-time unresolved shading separately.
+- **Exportar PNG + datos** saves the displayed numerical snapshot with
+  metadata embedded in the PNG and in a sibling JSON file. Export uses the
+  completed frame, even when another parameter is being calculated.
+
+![Dynamical explorer at the boundary polynomial](docs/images/explorer.png)
+
+The image samples a finite iteration limit. **Sin escape observado** means
+unresolved, not proven membership. In very small local charts the entire
+view can remain unresolved: spatial rescaling does not remove the O(t^24)
+return drift. See [docs/DYNAMICAL_EXPLORER.md](docs/DYNAMICAL_EXPLORER.md).
 
 The output is JSON containing polynomial coefficients (ascending powers), all
 six critical labels, the points X,Y,Z,W, equation residuals, separation sizes,
@@ -92,9 +131,9 @@ that sum through ordinary binary64 can erase its local displacement.
 
 The four arrows are `zero_to_values`, `one_to_values`, `values_to_cycle`,
 and `cycle`. Native kernels use Python's built-in complex arithmetic and do
-not call mpmath during evaluation. They are intended for bounded local
-positions; this stage does not implement automatic chart switching or a
-global Julia renderer. Binary64 scale underflow raises an error. The
+not call mpmath during evaluation. The graphical renderer also evaluates
+them on NumPy arrays, following zero/one -> values -> cycle. Binary64 scale
+underflow in the kernels raises an error; the renderer can fall back to MP. The
 high-precision factored scale and its logarithm remain available.
 
 Quantities named `portrait_*` use the exact cycle identities. The default
@@ -174,15 +213,18 @@ and is not necessarily the tau used in the exact normal form
   iteration does not decide whether its forward orbit is infinite, and the
   program does not claim to exclude exceptional preperiodic parameters.
 - Long numerical iterations of the prescribed finite orbits can drift from
-  their intended cycle. The future GUI should draw the prescribed portrait
-  from X,Y,Z,W and show its residuals, rather than conceal that drift.
+  their intended cycle. The GUI draws the prescribed portrait from X,Y,Z,W
+  and shows residuals; these arrows are not inferred from long rounded orbits.
 - This version uses affine-normalized representatives. The monic-centered
   view and the cusp geometry view are planned additions.
 
 ## Verify
 
 ```bash
+python -m pip install -e '.[gui]'
 python -m unittest discover -s tests -v
+# Include actual Tk acceptance without a physical display on Linux:
+xvfb-run -a python -m unittest discover -s tests -v
 ```
 
 The suite checks the explicit boundary map, criticality, original dynamical
@@ -192,6 +234,7 @@ and the console interface. It also compares all four local maps, the scaled
 multiplier and second return with direct high-precision computations, checks
 residual propagation on a deliberately perturbed polynomial, and exercises
 binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
-3.12, and 3.13.
+3.12, and 3.13, including the Tk event-loop tests under Xvfb. Without a
+display only the three Tk acceptance tests are skipped.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

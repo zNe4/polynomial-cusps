@@ -15,7 +15,12 @@ def main():
     parser.add_argument("--steps", type=int, default=8, help="radial continuation steps")
     parser.add_argument("--orbit", type=int, default=20, help="number of free-critical iterates")
     parser.add_argument("--rescaled", action="store_true", help="include factored scales and local-map diagnostics")
+    parser.add_argument("--gui", action="store_true", help="open the dynamical explorer")
     args = parser.parse_args()
+    if args.gui:
+        from .gui import main as gui_main
+        gui_main(real=args.real, imag=args.imag, dps=args.dps, orbit=args.orbit)
+        return
     if args.orbit < 0:
         parser.error("--orbit must be nonnegative")
     try:

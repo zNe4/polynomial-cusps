@@ -243,6 +243,48 @@ class GuiTests(unittest.TestCase):
         with self.assertRaises(tk.TclError):
             self.root.winfo_exists()
 
+    def test_movie_playback_uses_cache_and_pauses_for_interaction(self):
+        from polynomial_cusps.parameter_gui import ParameterWindow
+        self.render()
+        self.app.parameter_window = ParameterWindow(self.app, autostart=False)
+        self.app.open_movie()
+        window = self.app.movie_window
+        window.frames.set("64")
+        window.resolution.set("8")
+        window.include_loops.set(False)
+        window.prepare()
+        self.wait_for(lambda: window.movie is not None)
+        self.assertEqual(len(window.movie.frames), 64)
+        self.assertIs(self.app.scene, window.movie.frames[0].scene)
+        with patch("polynomial_cusps.gui.render", side_effect=AssertionError("Playback rendered")), \
+             patch("polynomial_cusps.gui.compose", side_effect=AssertionError("Playback composed")), \
+             patch("polynomial_cusps.movie.prepare_movie", side_effect=AssertionError("Playback prepared")), \
+             patch("polynomial_cusps.loop_gui.resolved_forward_loops", side_effect=AssertionError("Playback calculated loops")):
+            window.toggle_play()
+            self.wait_for(lambda: window.index >= 3)
+            window.pause()
+            frame = window.movie.frames[window.index]
+            self.assertIs(self.app.scene, frame.scene)
+            self.assertIs(self.app.frame, frame.result)
+            self.assertEqual(self.app.parameter_window.selected, frame.scene.point.t)
+            window.select(62)
+            window.toggle_play()
+            self.wait_for(lambda: 0 <= window.index <= 5)
+            window.pause()
+        window.toggle_play()
+        self.app.flags["labels"].set(False)
+        self.app.redraw()
+        self.assertFalse(window.playing)
+        self.app.request_render()
+        self.assertFalse(window.playing)
+        old = self.app.frame
+        window.prepare()
+        window.cancel()
+        self.root.update()
+        self.assertFalse(window._preparing)
+        self.assertIsNone(window.movie)
+        self.assertIs(self.app.frame, old)
+
 
 if __name__ == "__main__":
     unittest.main()

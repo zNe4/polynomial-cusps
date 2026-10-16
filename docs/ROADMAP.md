@@ -95,6 +95,20 @@ closure of the outer parameter circle, preview-color checks, cancellation,
 Newton correction, distribution packaging, and real Tk selection priority.
 See [TAYLOR_AND_EXTENDED_DOMAIN.md](TAYLOR_AND_EXTENDED_DOMAIN.md).
 
+## M03.2 — prepared parameter-circle movies (implemented)
+
+- Prepare verified circle parameters, Julia renders, free orbits, visible
+  overlays, diagnostics and optional six-panel loop views before playback.
+- Compressed image cache, numerical snapshots, estimated storage budget,
+  progress, cancellation and atomic completion.
+- Separate movie controls for frames, sampling, fps, repeat, step and scrub.
+- Monotonic-clock playback reuses prepared snapshots; interactions pause it.
+  The independent dynamical source marker keeps its captured angle.
+
+Acceptance compares cached images and arrays with independent rendering,
+checks actual second images and source turns, and exercises Tk playback
+without numerical rendering or composition. See [PARAMETER_MOVIES.md](PARAMETER_MOVIES.md).
+
 ## M04 — geometric and normalization views
 
 - Add a monic-centered dynamical view via the affine conjugacy in the proof,

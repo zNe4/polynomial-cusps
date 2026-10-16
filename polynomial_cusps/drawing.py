@@ -199,3 +199,21 @@ def save_export(path, scene, result, options=OverlayOptions(), mode="Escape", se
     compose(scene, result, options, mode, selected, loops=loops).save(path, pnginfo=info)
     path.with_suffix(".json").write_text(text+"\n", encoding="utf-8")
     return path
+
+
+def scene_text(scene, result, selected=None):
+    p, c = scene.point, scene.point.ctx
+    report = scene.reference.report()
+    def short(value):
+        return "n/a" if value is None else c.nstr(value, 8)
+    text = (f"Parámetro mostrado:\nt = {short(p.t)}\n\n"
+            f"Precisión: {c.dps} dígitos\n"
+            f"log10 |Delta| = {short(report['scales']['cycle']['log10_abs'])}\n"
+            f"log10 |mu-1| (retrato) =\n{short(report['portrait_multiplier_defect']['log10_abs'])}\n"
+            f"Residuo local (radio 2):\n{short(report['normalized_residuals']['cycle_map_bound_radius_2'])}\n"
+            f"Corrección relativa de mu-1:\n{short(report['raw_correction_over_portrait_defect'])}\n"
+            f"Píxeles MP de respaldo: {result.fallback_pixels}\n")
+    if selected:
+        text += f"\nz{selected[1]} =\n{c.nstr(selected[0], 16)}\n"
+    text += "\nSin escape observado no demuestra pertenencia.\nLos mapas conservan residuos."
+    return text

@@ -92,6 +92,7 @@ class ParameterWindow:
             ttk.Label(circle, text=title).pack(side="left", padx=(0, 4))
             ttk.Entry(circle, textvariable=variable, width=width).pack(side="left", padx=(0, 6))
         ttk.Button(circle, text="Preparar vuelta", command=self.build_circle).pack(side="left")
+        ttk.Button(circle, text="Vuelta movie…", command=app.open_movie).pack(side="left", padx=5)
         row = ttk.Frame(self.window, padding=(10, 0))
         row.pack(fill="x")
         ttk.Button(row, text="Reproducir / pausa", command=self.toggle_play).pack(side="left")
@@ -156,6 +157,8 @@ class ParameterWindow:
         self.coordinates.set(f"t = {self.ctx.nstr(t, 9)} · ancho {self.view.span} · |t| ≤ 0.5")
 
     def build_circle(self):
+        if self.app.movie_window is not None:
+            self.app.movie_window.pause()
         self.pause()
         self.circle = None
         try:
@@ -227,17 +230,41 @@ class ParameterWindow:
             for a, b in zip(positions, positions[1:]):
                 if a is not None and b is not None:
                     draw.line((a, b), fill="#e6c97e", width=2)
-        selection = self._position(self.selected)
-        if selection:
-            x, y = selection
-            draw.ellipse((x-5, y-5, x+5, y+5), fill="#fff4d4", outline="#061421", width=2)
         self.photo = ImageTk.PhotoImage(image, master=self.window)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
+        self._selection_item = None
+        self._draw_selection()
+
+    def _draw_selection(self):
+        selection = self._position(self.selected)
+        if selection:
+            x, y = selection
+            if self._selection_item is None:
+                self._selection_item = self.canvas.create_oval(x-5, y-5, x+5, y+5,
+                    fill="#fff4d4", outline="#061421", width=2)
+            else:
+                self.canvas.coords(self._selection_item, x-5, y-5, x+5, y+5)
+        elif self._selection_item is not None:
+            self.canvas.delete(self._selection_item)
+            self._selection_item = None
 
     def mark_selected(self, point):
         self.selected = point.t
-        self.redraw()
+        self._draw_selection()
+
+    def show_movie_position(self, circle, index):
+        if self.circle is not circle:
+            self.pause()
+            self.circle = circle
+            self.slider.configure(to=len(circle.points)-1)
+            self.redraw()
+        self.index = index
+        self._slider_lock = True
+        self.slider.set(index)
+        self._slider_lock = False
+        self.angle_text.set(f"theta = {360*index/(len(circle.points)-1):.1f} grados · movie")
+        self.mark_selected(circle.points[index])
 
     def pick(self, event):
         self.pause()

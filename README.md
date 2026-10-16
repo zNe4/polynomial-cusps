@@ -3,7 +3,7 @@
 Numerical exploration of the degree-seven parabolic counterexample whose
 critically marked portrait closure has an irreducible cusp.
 
-**Current stage: M03.1 — fast, wider parameter exploration.** Two Tk windows show the normalization parameter t near g and the
+**Current stage: M03.2 — cached parameter-circle movies.** Two Tk windows show the normalization parameter t near g and the
 selected polynomial's dynamics. A separate loop inspector magnifies marked
 regular points p and their actual images f(p), f²(p) in the dynamical plane.
 
@@ -98,6 +98,33 @@ the parameter path; PNG/JSON export includes displayed dynamical loops.
 ![Dynamical loops and marked images at g](docs/images/loops-g.png)
 
 ![Parameter selection and magnified dynamical loops](docs/images/parameter-loops.png)
+
+### Smooth parameter-circle playback
+
+In **Parámetros**, press **Vuelta movie…**, choose the radius, number of
+frames, Julia sampling and playback fps, then **Preparar película**.
+The default 240 frames at 30 fps give an eight-second turn. Preparation
+uses the current dynamical viewport, iteration count, engine, overlays and
+free-orbit length. Enable **Incluir lazos dinámicos** to cache the inspector
+and actual p, f(p), f²(p) curves as well. The source marker keeps its captured
+angle/turn count while the parameter travels around g.
+
+Wait for **Lista**, then use **Reproducir / pausa**, **Paso**, or the movie
+slider. **Repetir vuelta** loops the prepared sequence. Playback displays
+cached snapshots without Newton solves, orbit iterations, Julia rendering,
+or loop computation. Each frame is a checked family member. The closing
+parameter arc is independently checked; the duplicate endpoint is omitted
+from playback. Playback fps can change without preparing again.
+
+Preparation takes time and supports progress/cancellation. The cache uses
+compressed images plus numerical snapshots, with a 512 MiB estimated cache
+budget; this is not a bound on the whole process's RAM. Reduce frames or
+sampling if it is exceeded. Playback aims for the requested fps and may skip
+cached frames on slower hardware to preserve angular speed. Interacting with
+the dynamics pauses playback; resuming restores the prepared configuration.
+Changes to the radius, view, iterations, layers, or loop geometry need a new
+preparation to appear in the movie. Paused frames remain available for the
+ordinary point tools and PNG/JSON export. See [docs/PARAMETER_MOVIES.md](docs/PARAMETER_MOVIES.md).
 
 The parameter plane now opens on **|t| <= 0.5**, with **Cerca de g** and
 **Ampliado** presets. The default **Rápido: Taylor** mode evaluates a bundled
@@ -287,6 +314,6 @@ multiplier and second return with direct high-precision computations, checks
 residual propagation on a deliberately perturbed polynomial, and exercises
 binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
 3.12, and 3.13, including the Tk event-loop tests under Xvfb. Without a
-display only the nine Tk acceptance tests are skipped.
+display only the ten Tk acceptance tests are skipped.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

@@ -6,7 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import ImageTk
 
-from .drawing import OverlayOptions, compose, save_export
+from .drawing import OverlayOptions, compose, save_export, scene_text
 from .jobs import BackgroundJobs
 from .family import solve_family
 from .rendering import RenderSettings, Viewport, prepare_scene, render, scene_from_point
@@ -30,6 +30,7 @@ class Explorer:
         self.cache_key = None
         self.scene = None
         self.parameter_window = self.loop_window = None
+        self.movie_window = None
         self.selected = None
         self.viewport = Viewport()
         self.real, self.imag = tk.StringVar(value=real), tk.StringVar(value=imag)
@@ -132,6 +133,8 @@ class Explorer:
         return OverlayOptions(**{name: var.get() for name, var in self.flags.items()})
 
     def request_render(self, *, point=None, on_complete=None):
+        if self.movie_window is not None:
+            self.movie_window.pause()
         if self.parameter_window is not None:
             self.parameter_window.prioritize_selection()
         if self.parameter_window is not None and on_complete is None:
@@ -198,6 +201,8 @@ class Explorer:
         self._poll_id = self.root.after(50, self._poll)
 
     def redraw(self):
+        if self.movie_window is not None:
+            self.movie_window.pause()
         if self.frame is None:
             return
         image = compose(self.scene, self.frame, self.options(), self.mode.get(), self.selected,
@@ -205,20 +210,7 @@ class Explorer:
         self.photo = ImageTk.PhotoImage(image, master=self.root)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor="nw", image=self.photo)
-        p, c = self.scene.point, self.scene.point.ctx
-        report = self.scene.reference.report()
-        def short(value):
-            return "n/a" if value is None else c.nstr(value, 8)
-        text = (f"Parámetro mostrado:\nt = {short(p.t)}\n\n"
-                f"Precisión: {c.dps} dígitos\n"
-                f"log10 |Delta| = {short(report['scales']['cycle']['log10_abs'])}\n"
-                f"log10 |mu-1| (retrato) =\n{short(report['portrait_multiplier_defect']['log10_abs'])}\n"
-                f"Residuo local (radio 2):\n{short(report['normalized_residuals']['cycle_map_bound_radius_2'])}\n"
-                f"Corrección relativa de mu-1:\n{short(report['raw_correction_over_portrait_defect'])}\n"
-                f"Píxeles MP de respaldo: {self.frame.fallback_pixels}\n")
-        if self.selected:
-            text += f"\nz{self.selected[1]} =\n{c.nstr(self.selected[0], 16)}\n"
-        text += "\nSin escape observado no demuestra pertenencia.\nLos mapas conservan residuos."
+        text = scene_text(self.scene, self.frame, self.selected)
         self.info.configure(state="normal")
         self.info.delete("1.0", "end")
         self.info.insert("1.0", text)
@@ -319,6 +311,8 @@ class Explorer:
             return "break"
 
     def cancel(self):
+        if self.movie_window is not None:
+            self.movie_window.cancel()
         self.jobs.cancel()
         self.status.set("Cálculo cancelado. Se conserva la última imagen terminada.")
         self.progress["value"] = 0
@@ -347,6 +341,8 @@ class Explorer:
         if self._closed:
             return
         self._closed = True
+        if self.movie_window is not None:
+            self.movie_window.close()
         for timer in self._startup_ids:
             self.root.after_cancel(timer)
         if self.parameter_window is not None:
@@ -363,6 +359,63 @@ class Explorer:
             self.parameter_window = ParameterWindow(self)
         else:
             self.parameter_window.window.lift()
+
+    def open_movie(self):
+        if self.movie_window is None:
+            from .movie_gui import MovieWindow
+            self.movie_window = MovieWindow(self)
+        else:
+            self.movie_window.window.lift()
+
+    def show_movie_frame(self, movie, index):
+        """Install a complete cached snapshot without solving, rendering or composing."""
+        from .movie import unpack_image
+        frame, config = movie.frames[index], movie.config
+        self.jobs.cancel()
+        self.scene, self.frame, self.selected = frame.scene, frame.result, None
+        self.real.set(frame.real)
+        self.imag.set(frame.imag)
+        self.dps.set(str(config.dps))
+        self.orbit.set(str(config.orbit))
+        self.cache_key = (frame.real, frame.imag, config.dps, config.orbit)
+        self.viewport = frame.result.viewport
+        self.view_name.set(next(label for label, name in VIEWS.items() if name == self.viewport.kind))
+        if config.view.kind != "global":
+            self.fixed_axes.set(config.view.fixed_axes)
+        self.resolution.set(str(config.settings.size))
+        self.iterations.set(str(config.settings.iterations))
+        self.engine.set(config.settings.engine)
+        self.mode.set(config.mode)
+        for name, flag in self.flags.items():
+            flag.set(getattr(config.overlays, name))
+        if self.parameter_window is not None:
+            self.parameter_window.pause()
+            self.parameter_window.prioritize_selection()
+            self.parameter_window.show_movie_position(movie.circle, index)
+        if frame.loops is not None:
+            if self.loop_window is None:
+                from .loop_gui import LoopWindow
+                self.loop_window = LoopWindow(self, prepared=frame)
+            else:
+                self.loop_window.show_prepared(frame)
+            self.loop_window.factor.set(config.loop_multiplier)
+            self.loop_window.epsilon.set(config.boundary_radius)
+            self.loop_window.show.set(config.show_loops)
+            self.loop_window.group.set({"both": "Ambos grupos", "0": "Grupo en 0", "1": "Grupo en 1"}[config.loop_group])
+        elif self.loop_window is not None:
+            self.loop_window.playing = False
+            self.loop_window.data = self.loop_window.scene = None
+            self.loop_window.canvas.delete("all")
+            self.loop_window.status.set("Esta película no incluye lazos. Activa Incluir lazos dinámicos y vuelve a prepararla.")
+        self.photo = ImageTk.PhotoImage(unpack_image(frame.png), master=self.root)
+        self.canvas.delete("all")
+        self.canvas.create_image(0, 0, anchor="nw", image=self.photo)
+        self.info.configure(state="normal")
+        self.info.delete("1.0", "end")
+        self.info.insert("1.0", frame.text)
+        self.info.configure(state="disabled")
+        self.progress["value"] = 1
+        self.status.set(f"Vuelta movie · {index+1}/{len(movie.frames)} · fotograma precalculado.")
 
     def open_loops(self):
         if self.loop_window is None:

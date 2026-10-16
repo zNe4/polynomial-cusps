@@ -4,15 +4,16 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from PIL import Image, ImageDraw, ImageTk
+from PIL import ImageTk
 
 from .drawing import pixel
 from .loops import resolved_forward_loops
 from .theme import SURFACE
+from .loop_drawing import loop_image, loop_text
 
 
 class LoopWindow:
-    def __init__(self, app):
+    def __init__(self, app, *, prepared=None):
         self.app = app
         self.window = tk.Toplevel(app.root)
         self.window.configure(background=SURFACE)
@@ -52,7 +53,22 @@ class LoopWindow:
         ttk.Label(self.window, text="Columnas: p → f(p), cerca de X/Y → f²(p), cerca de Z/W.\n"
                   "Ampliaciones del plano dinámico con ejes sin girar. Arrastra p en el Julia o usa el deslizador.",
                   padding=(10, 0, 10, 10), wraplength=3*self.size).pack(fill="x")
-        self.update_scene(app.scene)
+        if prepared is None:
+            self.update_scene(app.scene)
+        else:
+            self.show_prepared(prepared)
+
+    def show_prepared(self, frame):
+        from .movie import unpack_image
+        self.playing = False
+        self.scene, self.data, self.raw_index = frame.scene, frame.loops, frame.raw_index
+        self._slider_lock = True
+        self.slider.set(360*self.index/(len(self.data.zero_source)-1))
+        self._slider_lock = False
+        self.photo = ImageTk.PhotoImage(unpack_image(frame.loop_png), master=self.window)
+        self.canvas.delete("all")
+        self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
+        self.status.set(frame.loop_status)
 
     def update_scene(self, scene):
         if scene is None:
@@ -85,43 +101,11 @@ class LoopWindow:
         if self.data is None:
             return
         d, size = self.data, self.size
-        image = Image.new("RGB", (3*size, 2*size), "#0d1724")
-        draw = ImageDraw.Draw(image)
-        specs = ((d.zero_source, d.zero_criticals, "Grupo en 0: p0", "#73c1ff", None),
-                 (d.zero_image, d.targets, "Imagen: f(p0)", "#73c1ff", ("X", "Y")),
-                 (d.zero_second_image, d.second_targets, "Segunda: f^2(p0)", "#73c1ff", ("Z", "W")),
-                 (d.one_source, d.one_criticals, "Grupo en 1: p1", "#6ee7a6", None),
-                 (d.one_image, d.targets, "Imagen: f(p1)", "#6ee7a6", ("X", "Y")),
-                 (d.one_second_image, d.second_targets, "Segunda: f^2(p1)", "#6ee7a6", ("Z", "W")))
-        for panel, (track, criticals, title, color, names) in enumerate(specs):
-            ox, oy = panel % 3*size, panel//3*size
-            bound = max(1e-100, max(abs(complex(v)) for v in track+criticals))*1.2
-            def pos(v):
-                z = complex(v)/bound
-                return ox+size*(0.5+0.42*z.real), oy+size*(0.53-0.42*z.imag)
-            draw.rectangle((ox+1, oy+1, ox+size-1, oy+size-1), outline="#30465b")
-            draw.line([pos(v) for v in track], fill=color, width=2)
-            for n, v in enumerate(criticals):
-                x, y = pos(v)
-                draw.ellipse((x-3, y-3, x+3, y+3), fill="#ffdc84")
-                if names is not None:
-                    label = "/".join(names) if criticals[0] == criticals[1] else names[n]
-                    if criticals[0] != criticals[1] or n == 0:
-                        draw.text((x+5, y+4), label, fill="#ffdc84")
-            x, y = pos(track[self.index])
-            draw.ellipse((x-5, y-5, x+5, y+5), fill=color, outline="white")
-            draw.text((ox+8, oy+8), title, fill="#e3edf3")
+        image = loop_image(d, self.index, size)
         self.photo = ImageTk.PhotoImage(image, master=self.window)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
-        c = self.scene.point.ctx
-        turns = self.raw_index/(len(d.zero_source)-1)
-        self.status.set(f"f fijo en este fotograma: t = {c.nstr(d.t, 7)}\n"
-                        f"Vueltas de la imagen por vuelta fuente: grupo 0 = {float(d.winding_zero.real):.0f}; "
-                        f"grupo 1 = {float(d.winding_one.real):.0f}. "
-                        f"Segunda imagen sobre Z: {float(d.second_winding_zero.real):.0f} y "
-                        f"{float(d.second_winding_one.real):.0f}. Giro marcado: {turns:.2f} vueltas.\n"
-                        "Amarillo: críticos o puntos del retrato. Color: p, f(p), f²(p).")
+        self.status.set(loop_text(self.scene, d, self.raw_index))
 
     def set_index(self, raw_index):
         self.raw_index = max(0, raw_index)
@@ -171,6 +155,8 @@ class LoopWindow:
         return False
 
     def close(self):
+        if self.app.movie_window is not None:
+            self.app.movie_window.pause()
         self.playing = False
         if self._timer is not None:
             self.window.after_cancel(self._timer)

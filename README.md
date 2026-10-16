@@ -46,6 +46,8 @@ python -m polynomial_cusps --gui --real 0.08 --imag 0.06 --orbit 40
 
 The installed `polynomial-cusps-gui` command opens the same application.
 The dynamical and parameter windows open together.
+Press **Ctrl+Q** in either window to quit the application. In the dynamical
+loop window, **Ctrl+Q** closes only that window; **Lazos** opens it again.
 A graphical display is required. The numerical console remains available
 without NumPy, Pillow, or Tk.
 
@@ -281,6 +283,6 @@ multiplier and second return with direct high-precision computations, checks
 residual propagation on a deliberately perturbed polynomial, and exercises
 binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
 3.12, and 3.13, including the Tk event-loop tests under Xvfb. Without a
-display only the seven Tk acceptance tests are skipped.
+display only the nine Tk acceptance tests are skipped.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

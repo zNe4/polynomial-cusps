@@ -199,6 +199,50 @@ class GuiTests(unittest.TestCase):
         self.assertAlmostEqual(float(loops.slider.get()), 90)
         self.assertEqual(self.app.loop_overlay()[1], new_count//4)
 
+    def test_ctrl_q_closes_only_loops_then_quits_from_dynamic_window(self):
+        import tkinter as tk
+        self.render()
+        self.app.open_parameters()
+        self.app.open_loops()
+        loops = self.app.loop_window
+        loops.toggle_play()
+        loops.slider.focus_force()
+        self.root.update()
+        loops.slider.event_generate("<Control-q>")
+        self.root.update()
+        self.assertIsNone(self.app.loop_window)
+        self.assertFalse(loops.playing)
+        self.assertFalse(loops.window.winfo_exists())
+        self.assertTrue(self.root.winfo_exists())
+        self.assertTrue(self.app.parameter_window.window.winfo_exists())
+        self.app.open_loops()  # Can reopen after the shortcut.
+        self.app.info.focus_force()
+        self.root.update()
+        self.app.info.event_generate("<Control-Q>")
+        self.assertTrue(self.app._closed)
+        self.assertIsNone(self.app.loop_window)
+        self.assertIsNone(self.app.parameter_window)
+        with self.assertRaises(tk.TclError):
+            self.root.winfo_exists()
+
+    def test_ctrl_q_from_parameter_control_quits_during_calculation(self):
+        import tkinter as tk
+        from polynomial_cusps.parameter_gui import ParameterWindow
+        self.app.parameter_window = ParameterWindow(self.app, autostart=False)
+        parameters = self.app.parameter_window
+        parameters.slider.focus_force()
+        self.root.update()
+        parameters.quality.set("Verificado: Newton")
+        parameters.configure_sampling()
+        parameters.render_grid()
+        self.app.request_render()
+        parameters.slider.event_generate("<Control-q>")
+        self.assertTrue(self.app._closed)
+        self.assertTrue(parameters._closed)
+        self.assertIsNone(self.app.parameter_window)
+        with self.assertRaises(tk.TclError):
+            self.root.winfo_exists()
+
 
 if __name__ == "__main__":
     unittest.main()

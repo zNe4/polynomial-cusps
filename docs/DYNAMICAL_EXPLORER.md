@@ -97,11 +97,14 @@ reference limits, restart of out-of-range local coordinates, cancellation,
 obsolete worker results, grouped critical identities, palette output, and
 PNG/JSON snapshot consistency.
 
-Six tests use a real Tk event loop: boundary/real/nonreal parameter changes
+Nine tests use a real Tk event loop: boundary/real/nonreal parameter changes
 and all local presets; selection, iteration, zoom, toggles, and export;
 failure/cancellation while preserving the previous frame; parameter selection
 and independent loop movement, including g and export; and serial parameter
 circle playback that waits for each dynamical frame; and the fast wider
-parameter preview with selection priority over grid verification. GitHub Actions
+parameter preview with selection priority over grid verification; loop
+refinement preserving marker angle and turns; and Ctrl+Q closing only the
+focused loop inspector or quitting the whole app from either main window,
+including cancellation of active work. GitHub Actions
 runs all tests under Xvfb on Python 3.10, 3.12, and 3.13. Local headless runs
-skip only these six display-dependent acceptance tests.
+skip only these nine display-dependent acceptance tests.

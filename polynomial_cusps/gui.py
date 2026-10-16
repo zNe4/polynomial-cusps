@@ -53,6 +53,8 @@ class Explorer:
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.bind("<space>", self._space)
+        root.bind("<Control-q>", self._quit)
+        root.bind("<Control-Q>", self._quit)
         self._closed = False
         self._poll_id = root.after(50, self._poll)
         self._startup_ids = []
@@ -340,7 +342,17 @@ class Explorer:
             except (ValueError, OSError) as error:
                 messagebox.showerror("Exportación", str(error), parent=self.root)
 
+    def _quit(self, event):
+        window = event.widget.winfo_toplevel()
+        if self.loop_window is not None and window is self.loop_window.window:
+            self.loop_window.close()
+        else:
+            self.close()
+        return "break"
+
     def close(self):
+        if self._closed:
+            return
         self._closed = True
         for timer in self._startup_ids:
             self.root.after_cancel(timer)

@@ -22,6 +22,8 @@ class ParameterWindow:
         self.window = tk.Toplevel(app.root)
         self.window.title("Polynomial Cusps · Parámetros t alrededor de g")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
+        self.window.bind("<Control-q>", app._quit)
+        self.window.bind("<Control-Q>", app._quit)
         self.size = min(480, max(260, app.root.winfo_screenheight()-430))
         self.jobs, self.cache = BackgroundJobs(), FamilyCache()
         self.ctx = mpmath.mp.clone()

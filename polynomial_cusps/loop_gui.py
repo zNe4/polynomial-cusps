@@ -16,6 +16,8 @@ class LoopWindow:
         self.window = tk.Toplevel(app.root)
         self.window.title("Lazos en el plano dinámico · p, f(p), f²(p)")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
+        self.window.bind("<Control-q>", app._quit)
+        self.window.bind("<Control-Q>", app._quit)
         self.size = min(270, max(150, (app.root.winfo_screenheight()-300)//2),
                         max(150, (app.root.winfo_screenwidth()-60)//3))
         self.factor, self.epsilon = tk.StringVar(value="2.5"), tk.StringVar(value="0.03")

@@ -105,7 +105,8 @@ def prepare_scene(real="0", imag="0", dps=60, orbit=40, cancel=None):
     if not isinstance(orbit, int) or not 0 <= orbit <= 5000:
         raise ValueError("Free-orbit steps must be between 0 and 5000")
     _check(cancel)
-    point = solve_family((real, imag), dps=dps)
+    from .taylor import solve_explorer_family
+    point = solve_explorer_family((real, imag), dps=dps)
     return scene_from_point(point, orbit, cancel)
 
 

@@ -3,8 +3,7 @@
 Numerical exploration of the degree-seven parabolic counterexample whose
 critically marked portrait closure has an irreducible cusp.
 
-**Current stage: M03 — parameter selection, parameter circles, and forward
-loops.** Two Tk windows show the normalization parameter t near g and the
+**Current stage: M03.1 — fast, wider parameter exploration.** Two Tk windows show the normalization parameter t near g and the
 selected polynomial's dynamics. A separate loop inspector magnifies marked
 regular points p and their actual images f(p), f²(p) in the dynamical plane.
 
@@ -73,7 +72,7 @@ without NumPy, Pillow, or Tk.
 - **Parameter circle:** in **Parámetros**, enter a small radius r, press
   **Preparar vuelta**, then **Reproducir / pausa**, **Paso**, or move the
   angle slider. This changes the polynomial along `t = r exp(i theta)`,
-  with g at t=0. The critical points follow the changing polynomial.
+  with g at t=0 and radii up to 0.5. The critical points follow the changing polynomial.
 - **Dynamical loops:** press **Lazos**. The blue/green source circles enclose
   the critical groups near 0 and 1. Their marked points p0,p1 and images
   f(p0),f(p1), and f²(p0),f²(p1) are drawn on the Julia view. Use **Mover p / pausa**, the loop
@@ -98,12 +97,21 @@ the parameter path; PNG/JSON export includes displayed dynamical loops.
 
 ![Parameter selection and magnified dynamical loops](docs/images/parameter-loops.png)
 
-The parameter image uses checked cell-center solutions with caching and
-continuation. Choose the portrait-constrained cycle's numerical stability
-or finite-time escape of the free critical point. The former uses a stable
-scaled multiplier defect and does not classify the free orbit. This is a
-view of the normalization t, not the ambient cusp as a planar tip. See
+The parameter plane now opens on **|t| <= 0.5**, with **Cerca de g** and
+**Ampliado** presets. The default **Rápido: Taylor** mode evaluates a bundled
+series on a 129×129 grid. It is an approximate cycle-stability preview;
+gray includes cells with an uncertain degree-comparison signal. Every click
+constructs and Newton-verifies the selected polynomial before rendering it.
+
+Choose **Verificado: Newton** to check individual cell centers. The free-orbit
+escape mode always uses these checked family samples. Selecting a parameter
+pauses an ongoing grid verification so the dynamical view takes priority.
+A larger operational disk is not a proof that the normalization is a global
+coordinate; failures remain explicit. See
+[docs/TAYLOR_AND_EXTENDED_DOMAIN.md](docs/TAYLOR_AND_EXTENDED_DOMAIN.md) and
 [docs/PARAMETERS_AND_LOOPS.md](docs/PARAMETERS_AND_LOOPS.md).
+
+![Wider parameter plane and dynamics at t=0.45+0.2i](docs/images/wide-parameter-plane.png)
 
 The image samples a finite iteration limit. **Sin escape observado** means
 unresolved, not proven membership. In very small local charts the entire
@@ -235,7 +243,7 @@ and is not necessarily the tau used in the exact normal form
 
 ## Numerical interpretation
 
-- The implemented range is `|t| <= 0.2`, with radial continuation from zero and checked seeded continuation
+- The implemented range is `|t| <= 0.5`, with radial continuation from zero and checked seeded continuation
   between nearby samples.
   This is an operational limit, **not a certified neighborhood radius**.
   Convergence and residual checks are numerical, not interval proofs of
@@ -273,6 +281,6 @@ multiplier and second return with direct high-precision computations, checks
 residual propagation on a deliberately perturbed polynomial, and exercises
 binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
 3.12, and 3.13, including the Tk event-loop tests under Xvfb. Without a
-display only the five Tk acceptance tests are skipped.
+display only the seven Tk acceptance tests are skipped.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

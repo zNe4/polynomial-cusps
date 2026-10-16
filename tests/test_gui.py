@@ -23,6 +23,11 @@ class GuiTests(unittest.TestCase):
 
     def tearDown(self):
         self.app.close()
+        self.app = self.root = None
+        # Collect Tcl-owned cycles on the Tk thread before the next test starts
+        # a numerical worker which might otherwise trigger Python's collector.
+        import gc
+        gc.collect()
 
     def wait_for(self, condition):
         deadline = time.monotonic()+15
@@ -159,6 +164,40 @@ class GuiTests(unittest.TestCase):
         self.wait_for(lambda: self.app.scene.point.t == window.circle.points[-1].t)
         self.assertAlmostEqual(float(window.circle.windings["x"].real), 4)
         self.assertAlmostEqual(float(window.circle.windings["s"].real), 3)
+
+    def test_fast_wide_plane_and_selection_priority(self):
+        from polynomial_cusps.parameter_gui import ParameterWindow
+        self.render()
+        self.app.parameter_window = ParameterWindow(self.app, autostart=False)
+        window = self.app.parameter_window
+        window.render_grid()
+        self.wait_for(lambda: window.grid is not None)
+        self.assertTrue(window.grid.approximate)
+        self.assertEqual(window.grid.states.shape, (129, 129))
+        window.quality.set("Verificado: Newton")
+        window.configure_sampling()
+        window.render_grid()
+        old = self.app.frame
+        self.app.apply_parameter(self.app.scene.point.ctx.mpc("0.4", "0.1"))
+        self.assertIsNone(window._task)  # CPU-heavy grid stops for the requested dynamics
+        self.wait_for(lambda: self.app.frame is not old)
+        self.assertGreater(abs(self.app.scene.point.t), self.app.scene.point.ctx.mpf("0.2"))
+        self.assertTrue(self.app.scene.point.diagnostics()["numerical_ok"])
+
+    def test_loop_refinement_preserves_marker_angle_and_turns(self):
+        self.render()
+        self.app.open_loops()
+        loops = self.app.loop_window
+        count = len(loops.data.zero_source)-1
+        loops.set_index(count+count//4)
+        old = self.app.frame
+        self.app.apply_parameter(self.app.scene.point.ctx.mpc("0.35", "0.35"))
+        self.wait_for(lambda: self.app.frame is not old)
+        new_count = len(loops.data.zero_source)-1
+        self.assertGreater(new_count, count)
+        self.assertAlmostEqual(loops.raw_index/new_count, 1.25)
+        self.assertAlmostEqual(float(loops.slider.get()), 90)
+        self.assertEqual(self.app.loop_overlay()[1], new_count//4)
 
 
 if __name__ == "__main__":

@@ -50,4 +50,7 @@ class BackgroundJobs:
 
     def close(self):
         self.cancel()
-        self._executor.shutdown(wait=False, cancel_futures=True)
+        # Finish cancellation before Tk owners are destroyed. Queued completion
+        # callbacks can retain UI objects and must be released on the UI thread.
+        self._executor.shutdown(wait=True, cancel_futures=True)
+        self.poll()

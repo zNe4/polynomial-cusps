@@ -7,17 +7,27 @@ magnifications of curves in the same dynamical plane.
 ## Selecting the polynomial
 
 The parameter plane is the normalization coordinate t, with g at t=0 and
-implemented domain |t| <= 0.2. This is a numerical operating range, not a
+implemented domain |t| <= 0.5. This is a numerical operating range, not a
 certified local validity radius. Click to select a continuous parameter;
 drag a rectangle or use the wheel to zoom independently of the Julia view.
 The circle and selected-parameter marker stay in this parameter plane.
 
-The image is a coarse grid of individually checked cell-center solutions,
-displayed without interpolation. Each completed row appears progressively.
-The solver uses an LRU cache and the previous solution as a continuation
-seed, with radial fallback if seeded Newton fails. Family preparation and
-image work run in cancellable workers; obsolete generations cannot replace
-newer results. Selection remains usable while the grid is calculated.
+The default **Rápido: Taylor** image is a 129×129 approximate preview of the
+portrait-constrained cycle's stability, using a bundled degree-128 table.
+It needs no Newton solves for its cells. Gray includes numerical uncertainty
+estimated by comparison with degree 96. This comparison is not an interval
+error bound. Clicks always Newton-correct and verify the selected polynomial.
+
+**Verificado: Newton** displays a coarse grid of individually checked
+cell-center solutions without interpolation. Each completed row appears
+progressively. Its solver uses a cache, continuation seeds, and radial fallback.
+The free-orbit escape mode always uses this verified parameter construction.
+Selecting t pauses a grid calculation to give the dynamical window priority.
+Obsolete worker generations cannot replace newer results.
+
+**Cerca de g** restores width 0.28; **Ampliado** restores width 1.1, enclosing
+the whole radius-0.5 disk. Mouse motion shows parameter coordinates and the
+current viewport width. The wheel and rectangular zoom remain available.
 
 The two color modes have different meanings:
 
@@ -28,7 +38,8 @@ The two color modes have different meanings:
 
 The boundary sample g is pale yellow; failed solves are red and samples
 outside the implemented domain are dark. A colored cell represents its
-center, not a proof about its whole area. Cycle coloring is not a test of
+center, not a proof about its whole area. Taylor cells are approximate and
+contain no checked family solution until the parameter is selected. Cycle coloring is not a test of
 the free orbit or a claim about hyperbolic components.
 
 To avoid subtracting a tiny defect from one, cycle coloring evaluates the
@@ -47,7 +58,7 @@ are numerical tolerances, not exact neutral loci.
 
 ## Moving around g in parameter space
 
-Enter r and a frame count (64–720), then press **Preparar vuelta**. The
+Enter 0 < r <= 0.5 and a frame count (64–720), then press **Preparar vuelta**. The
 program solves t=r exp(i theta) by continuation and independently solves
 the last arc back to the initial t. It checks closure of the marked family
 before accepting the circle. **Reproducir / pausa**, **Paso**, and the angle
@@ -110,6 +121,15 @@ without materializing f(p) as a rounded absolute number. It is centered at
 Z+(W-Z)/2 and positively scaled by |W-Z|. The cycle panel marks both Z and
 W. Its winding about Z is measured separately from the first image's
 winding about X; for the default small loops it is again 3 and 4.
+
+Farther from g, these physical circles grow and can enclose additional
+preimages. The second-image winding need not stay 3 and 4: for example,
+the default group-1 circle gives 15 at t=0.5 and 12 at t=0.35+0.35i.
+The inspector refines its sampling until all four winding counts agree at
+two successive resolutions, up to 2048 samples. This is a numerical check,
+not a certified bound; if it fails, choose another radius. Refinement
+preserves the marked point's angle and accumulated source turns, and can
+add computation time when changing f with the loop inspector open.
 
 At g the source radius is the absolute value **Radio en g**, default 0.03.
 The code evaluates the exact factored expressions

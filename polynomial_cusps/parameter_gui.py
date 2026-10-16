@@ -11,7 +11,8 @@ from PIL import Image, ImageDraw, ImageTk
 
 from .jobs import BackgroundJobs
 from .drawing import _encode
-from .parameters import COLORS, FamilyCache, parameter_circle, parameter_grid
+from .parameters import COLORS, FamilyCache, parameter_circle, parameter_grid, parameter_preview
+from .family import MAX_PARAMETER_ABS
 from .rendering import Viewport
 
 
@@ -21,13 +22,15 @@ class ParameterWindow:
         self.window = tk.Toplevel(app.root)
         self.window.title("Polynomial Cusps · Parámetros t alrededor de g")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.size = min(480, max(320, app.root.winfo_screenheight()-370))
+        self.size = min(480, max(260, app.root.winfo_screenheight()-430))
         self.jobs, self.cache = BackgroundJobs(), FamilyCache()
         self.ctx = mpmath.mp.clone()
         self.ctx.dps = 100
-        self.view = Viewport("global", "0", "0", "0.28")
-        self.samples = tk.StringVar(value="17")
+        self.view = Viewport("global", "0", "0", "1.1")
+        self.samples = tk.StringVar(value="129")
         self.mode = tk.StringVar(value="Ciclo: retrato exacto")
+        self.quality = tk.StringVar(value="Rápido: Taylor")
+        self.coordinates = tk.StringVar(value="Plano t · ancho 1.1 · dominio |t| ≤ 0.5")
         self.radius, self.frames = tk.StringVar(value="0.08"), tk.StringVar(value="96")
         self.status = tk.StringVar(value="Clic: elegir t · arrastrar/rueda: zoom independiente")
         self.angle_text = tk.StringVar(value="theta = 0 grados")
@@ -38,13 +41,24 @@ class ParameterWindow:
         self.playing, self._token, self._closed = False, 0, False
         self._timer = None
         self._auto_id = None
+        self._task = None
         top = ttk.Frame(self.window, padding=10)
         top.pack(fill="x")
-        ttk.Combobox(top, textvariable=self.mode, values=("Ciclo: retrato exacto", "Órbita libre: escape"),
-                     state="readonly", width=25).pack(side="left")
-        ttk.Combobox(top, textvariable=self.samples, values=(9, 17, 25, 41), width=4).pack(side="left", padx=6)
+        mode_combo = ttk.Combobox(top, textvariable=self.mode, values=("Ciclo: retrato exacto", "Órbita libre: escape"),
+                                  state="readonly", width=25)
+        mode_combo.pack(side="left")
+        mode_combo.bind("<<ComboboxSelected>>", self.configure_sampling)
+        self.sample_combo = ttk.Combobox(top, textvariable=self.samples, values=(65, 129, 257, 513), width=4)
+        self.sample_combo.pack(side="left", padx=6)
         ttk.Button(top, text="Calcular", command=self.render_grid).pack(side="left")
         ttk.Button(top, text="Cancelar", command=self.cancel).pack(side="left", padx=3)
+        quality_row = ttk.Frame(self.window, padding=(10, 0, 10, 6))
+        quality_row.pack(fill="x")
+        quality_combo = ttk.Combobox(quality_row, textvariable=self.quality,
+                                     values=("Rápido: Taylor", "Verificado: Newton"), state="readonly", width=22)
+        quality_combo.pack(side="left")
+        quality_combo.bind("<<ComboboxSelected>>", self.configure_sampling)
+        ttk.Label(quality_row, text="Seleccionar t siempre verifica el polinomio.").pack(side="left", padx=8)
         self.canvas = tk.Canvas(self.window, width=self.size, height=self.size,
                                 bg="#0d1724", highlightthickness=1, highlightbackground="#344c60")
         self.canvas.pack(padx=10)
@@ -53,13 +67,19 @@ class ParameterWindow:
         self.canvas.bind("<MouseWheel>", lambda e: self.zoom("0.5" if e.delta > 0 else "2", e))
         self.canvas.bind("<Button-4>", lambda e: self.zoom("0.5", e))
         self.canvas.bind("<Button-5>", lambda e: self.zoom("2", e))
+        self.canvas.bind("<Motion>", self.motion)
+        ttk.Label(self.window, textvariable=self.coordinates, padding=(10, 3)).pack(fill="x")
         ttk.Label(self.window, text="Turquesa: ciclo atractor · violeta: repulsor (retrato)\n"
                   "Naranja: escape libre · gris: no resuelto · rojo: cálculo fallido\n"
+                  "Taylor: vista aproximada del ciclo; gris incluye incertidumbre.\n"
                   "Plano t: normalización de la cúspide; g corresponde a t=0.",
                   wraplength=self.size, padding=(10, 5)).pack(fill="x")
+        navigation = ttk.Frame(self.window, padding=(10, 0, 10, 5))
+        navigation.pack(fill="x")
+        ttk.Button(navigation, text="Cerca de g", command=self.reset).pack(side="left")
+        ttk.Button(navigation, text="Ampliado |t| ≤ 0.5", command=lambda: self.reset("1.1")).pack(side="left", padx=6)
         buttons = ttk.Frame(self.window, padding=(10, 0))
         buttons.pack(fill="x")
-        ttk.Button(buttons, text="Restablecer plano", command=self.reset).pack(side="left")
         ttk.Button(buttons, text="Mostrar lazos dinámicos", command=app.open_loops).pack(side="left", padx=6)
         ttk.Button(buttons, text="Datos de vuelta", command=self.export_circle).pack(side="left")
         circle = ttk.LabelFrame(self.window, text="Vuelta paramétrica: t = r exp(i theta)", padding=8)
@@ -98,12 +118,38 @@ class ParameterWindow:
         except ValueError as error:
             self.status.set(str(error))
             return
-        self.states = np.full((size, size), 7, dtype=np.uint8) if 3 <= size <= 81 else self.states
+        fast = self.quality.get().startswith("Rápido") and mode == "cycle"
+        if not fast and size > 81:
+            size = 9
+            self.samples.set("9")
+        limit = 1025 if fast else 81
+        self.states = np.full((size, size), 7, dtype=np.uint8) if 3 <= size <= limit else self.states
         self.redraw()
-        self.status.set("Calculando celdas verificadas; la selección sigue disponible.")
-        self.jobs.submit(lambda cancel, progress: ("grid", parameter_grid(
-            view, size=size, mode=mode, iterations=iterations,
-            cache=self.cache, cancel=cancel, progress=progress)))
+        self._task = "grid"
+        self.progress["value"] = 0
+        self.status.set("Calculando vista rápida de Taylor…" if fast else
+                        "Calculando celdas verificadas; seleccionar t pausa este cálculo.")
+        cache = self.cache
+        self.jobs.submit(lambda cancel, progress: ("grid", parameter_preview(view, size=size, cancel=cancel)
+            if fast else parameter_grid(view, size=size, mode=mode, iterations=iterations,
+                                        cache=cache, cancel=cancel, progress=progress)))
+
+    def configure_sampling(self, event=None):
+        if not self.mode.get().startswith("Ciclo"):
+            self.quality.set("Verificado: Newton")
+        fast = self.quality.get().startswith("Rápido") and self.mode.get().startswith("Ciclo")
+        self.sample_combo.configure(values=(65, 129, 257, 513) if fast else (9, 17, 25, 41))
+        self.samples.set("129" if fast else "9")
+
+    def prioritize_selection(self):
+        if self._task == "grid":
+            self.jobs.cancel()
+            self._task = None
+            self.status.set("Cálculo paramétrico pausado para mostrar la selección. Calcular lo reanuda.")
+
+    def motion(self, event):
+        t = self.view.coordinate(self.ctx, str(event.x/self.size), str(event.y/self.size))
+        self.coordinates.set(f"t = {self.ctx.nstr(t, 9)} · ancho {self.view.span} · |t| ≤ 0.5")
 
     def build_circle(self):
         self.pause()
@@ -114,9 +160,12 @@ class ParameterWindow:
             self.status.set(str(error))
             return
         self.status.set("Preparando una vuelta cerrada y midiendo sus números de giro…")
+        self._task = "circle"
+        self.progress["value"] = 0
         radius = self.radius.get()
+        cache = self.cache
         self.jobs.submit(lambda cancel, progress: ("circle", parameter_circle(
-            radius, frames=frames, dps=dps, cache=self.cache, cancel=cancel, progress=progress)))
+            radius, frames=frames, dps=dps, cache=cache, cancel=cancel, progress=progress)))
 
     def poll(self):
         if self._closed:
@@ -130,12 +179,18 @@ class ParameterWindow:
                     value = data
                 self.progress["value"] = value
             elif kind == "error":
+                self._task = None
                 self.status.set(f"Cálculo detenido: {data}")
             else:
+                self._task = None
                 tag, result = data
                 if tag == "grid":
                     self.grid, self.states = result, result.states
-                    self.status.set(f"{len(result.points)} muestras verificadas. Cada celda usa su centro; no hay interpolación.")
+                    if result.approximate:
+                        self.status.set(f"Vista Taylor {result.states.shape[0]}²: aproximación numérica. "
+                                        "Usa Verificado para comprobar celdas; los clics siempre verifican t.")
+                    else:
+                        self.status.set(f"{len(result.points)} muestras verificadas. Cada celda usa su centro; no hay interpolación.")
                 else:
                     self.circle, self.index = result, 0
                     self.slider.configure(to=len(result.points)-1)
@@ -191,8 +246,8 @@ class ParameterWindow:
             self.render_grid()
             return
         t = self.view.coordinate(self.ctx, str(event.x/self.size), str(event.y/self.size))
-        if abs(t) > self.ctx.mpf("0.2"):
-            self.status.set("Fuera del dominio local implementado: |t| <= 0.2.")
+        if abs(t) > self.ctx.mpf(MAX_PARAMETER_ABS):
+            self.status.set(f"Fuera del dominio exploratorio implementado: |t| <= {MAX_PARAMETER_ABS}.")
             return
         self.app.apply_parameter(t)
 
@@ -200,8 +255,9 @@ class ParameterWindow:
         self.view = self.view.zoom(self.ctx, factor, str(event.x/self.size), str(event.y/self.size))
         self.render_grid()
 
-    def reset(self):
-        self.view = Viewport("global", "0", "0", "0.28")
+    def reset(self, span="0.28"):
+        self.view = Viewport("global", "0", "0", span)
+        self.coordinates.set(f"Plano t · ancho {span} · dominio |t| ≤ 0.5")
         self.render_grid()
 
     def select_index(self, index, *, autoplay=False):
@@ -248,6 +304,7 @@ class ParameterWindow:
     def cancel(self):
         self.pause()
         self.jobs.cancel()
+        self._task = None
         self.status.set("Cálculo paramétrico cancelado.")
 
     def export_circle(self):

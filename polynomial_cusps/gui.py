@@ -137,6 +137,8 @@ class Explorer:
         return OverlayOptions(**{name: var.get() for name, var in self.flags.items()})
 
     def request_render(self, *, point=None, on_complete=None):
+        if self.parameter_window is not None:
+            self.parameter_window.prioritize_selection()
         if self.parameter_window is not None and on_complete is None:
             self.parameter_window.pause()
         try:
@@ -149,7 +151,8 @@ class Explorer:
         key = (real, imag, dps, orbit)
         cached = self.scene if self.cache_key == key else None
         view = replace(self.viewport, fixed_axes=self.fixed_axes.get() and self.viewport.kind != "global")
-        self.status.set("Calculando… puedes cancelar o pedir otra vista.")
+        short = lambda value: value if len(value) <= 22 else value[:19]+"…"
+        self.status.set(f"Calculando t = ({short(real)}) + ({short(imag)})i… Se conserva el último fotograma terminado.")
         self.progress["value"] = 0
 
         def work(cancel, progress):

@@ -125,7 +125,7 @@ class FamilyTests(unittest.TestCase):
         for kwargs in ({"dps": 20}, {"dps": True}, {"steps": 0}, {"steps": 1.5}):
             with self.assertRaises(ValueError):
                 solve_family(**kwargs)
-        for t in ("nan", "inf", "0.21", ("0.1", "0.2"), (0, 1, 2)):
+        for t in ("nan", "inf", "0.51", ("0.4", "0.4"), (0, 1, 2)):
             with self.assertRaises(ValueError):
                 solve_family(t)
 

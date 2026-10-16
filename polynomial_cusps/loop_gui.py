@@ -7,7 +7,7 @@ from tkinter import ttk
 from PIL import Image, ImageDraw, ImageTk
 
 from .drawing import pixel
-from .loops import forward_loops
+from .loops import resolved_forward_loops
 
 
 class LoopWindow:
@@ -54,10 +54,12 @@ class LoopWindow:
         if scene is None:
             return
         try:
-            data = forward_loops(scene, multiplier=self.factor.get(), boundary_radius=self.epsilon.get())
+            data = resolved_forward_loops(scene, multiplier=self.factor.get(), boundary_radius=self.epsilon.get())
         except (ValueError, ZeroDivisionError) as error:
             self.status.set(str(error))
             return
+        if self.data is not None:
+            self.raw_index = round(self.raw_index*(len(data.zero_source)-1)/(len(self.data.zero_source)-1))
         self.data, self.scene = data, scene
         self.redraw()
 
@@ -138,7 +140,7 @@ class LoopWindow:
     def tick(self):
         self._timer = None
         if self.playing and self.data is not None:
-            self.set_index(self.raw_index+2)
+            self.set_index(self.raw_index+max(1, round((len(self.data.zero_source)-1)/96)))
             self._timer = self.window.after(60, self.tick)
 
     def pick_marker(self, event, *, dragging=False):

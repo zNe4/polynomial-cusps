@@ -84,7 +84,9 @@ there. In particular it retains the multiplier condition at g.
 
 The initial solution is (u_0,3/7,lambda_g,B_g). The solver uses mpmath's
 multidimensional Newton solver along the straight segment from zero to t,
-with eight steps by default. A failed solve raises an error. There is no
+with eight steps by default. Outside |t| <= 0.2, the step count also
+limits segment lengths to 0.025. The operational exploration disk is now
+|t| <= 0.5; this is not a certified uniform validity radius. A failed solve raises an error. There is no
 fallback to a polynomial violating the divided equations.
 
 ## Precision and diagnostics
@@ -111,3 +113,11 @@ consistency checks, not certified interval enclosures.
 The code intentionally leaves the free orbit unconstrained. It does not turn
 generic infiniteness in the mathematical proof into a claim about an
 individually selected numerical parameter.
+
+## Explorer predictor
+
+The GUI uses a bundled Cauchy/Taylor model as the initial Newton guess.
+The resulting parameter still passes the same high-precision portrait checks.
+A failed or large correction falls back to independent radial continuation.
+The console/reference `solve_family` remains independent of the table. See
+[TAYLOR_AND_EXTENDED_DOMAIN.md](TAYLOR_AND_EXTENDED_DOMAIN.md).

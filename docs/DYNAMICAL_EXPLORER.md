@@ -97,10 +97,11 @@ reference limits, restart of out-of-range local coordinates, cancellation,
 obsolete worker results, grouped critical identities, palette output, and
 PNG/JSON snapshot consistency.
 
-Five tests use a real Tk event loop: boundary/real/nonreal parameter changes
+Six tests use a real Tk event loop: boundary/real/nonreal parameter changes
 and all local presets; selection, iteration, zoom, toggles, and export;
 failure/cancellation while preserving the previous frame; parameter selection
 and independent loop movement, including g and export; and serial parameter
-circle playback that waits for each dynamical frame. GitHub Actions
+circle playback that waits for each dynamical frame; and the fast wider
+parameter preview with selection priority over grid verification. GitHub Actions
 runs all tests under Xvfb on Python 3.10, 3.12, and 3.13. Local headless runs
-skip only these five display-dependent acceptance tests.
+skip only these six display-dependent acceptance tests.

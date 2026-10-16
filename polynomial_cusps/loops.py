@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from .parameters import winding
+from .parameters import WindingUndersampled, winding
 from .rendering import _check
 from .family import _horner
 from .rescaling import _shift
@@ -33,6 +33,28 @@ class ForwardLoops:
     second_targets: tuple
     second_winding_zero: object
     second_winding_one: object
+
+
+def resolved_forward_loops(scene, **kwargs):
+    """Refine until all four sampled winding counts agree twice.
+
+    This is a numerical resolution check, not a certified winding bound.
+    Keep the marker's angular position when adopting the returned sample count.
+    """
+    previous = None
+    for samples in (96, 192, 384, 768, 1536, 2048):
+        try:
+            data = forward_loops(scene, samples=samples, **kwargs)
+        except WindingUndersampled:
+            previous = None
+            continue
+        counts = tuple(int(round(v.real)) for v in (
+            data.winding_zero, data.winding_one,
+            data.second_winding_zero, data.second_winding_one))
+        if counts == previous:
+            return data
+        previous = counts
+    raise WindingUndersampled("Loop winding did not stabilize; choose another radius")
 
 
 def forward_loops(scene, *, multiplier="2.5", boundary_radius="0.03", samples=192, cancel=None):

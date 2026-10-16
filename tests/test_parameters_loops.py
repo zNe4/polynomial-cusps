@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 from polynomial_cusps import solve_family
-from polynomial_cusps.loops import forward_loops
+from polynomial_cusps.loops import forward_loops, resolved_forward_loops
 from polynomial_cusps.parameters import (
     ATTRACTING, BOUNDARY, FAILED, OUTSIDE, REPELLING, FamilyCache,
     cycle_state, parameter_circle, parameter_grid,
@@ -64,7 +64,7 @@ class ParameterAndLoopTests(unittest.TestCase):
         self.assertTrue(all(p.diagnostics()["numerical_ok"] for p in result.points.values()))
         point = cache.get("0.08", "0", 40)
         self.assertIs(point, cache.get("0.08", "0", 40))
-        outside = parameter_grid(Viewport("global", "0.4", "0", "0.01"), size=3)
+        outside = parameter_grid(Viewport("global", "0.6", "0", "0.01"), size=3)
         self.assertTrue(np.all(outside.states == OUTSIDE))
         self.assertEqual(outside.points, {})
 
@@ -122,6 +122,22 @@ class ParameterAndLoopTests(unittest.TestCase):
         slow = render(scene, view, RenderSettings(4, 12, "mp"))
         np.testing.assert_allclose(fast.magnitude, slow.magnitude, atol=1e-12)
 
+    def test_extended_loops_refine_and_match_dense_double_iteration(self):
+        for real, imag in (("0.5", "0"), ("0.35", "0.35")):
+            scene = prepare_scene(real, imag, orbit=0)
+            loops = resolved_forward_loops(scene)
+            dense = forward_loops(scene, samples=2048)
+            for name in ("winding_zero", "winding_one", "second_winding_zero", "second_winding_one"):
+                self.assertLess(abs(getattr(loops, name)-getattr(dense, name)), scene.point.ctx.mpf("1e-40"))
+            self.assertGreater(loops.second_winding_one, 4)
+            p, c = scene.point, scene.point.ctx
+            for group, sources, images in ((0, loops.zero_source, loops.zero_second_image),
+                                            (1, loops.one_source, loops.one_second_image)):
+                for index in (0, 13, 79):
+                    z = group+loops.source_scales[group]*sources[index]
+                    observed = (p.f(p.f(z))-loops.second_center)/loops.second_scales[group]
+                    self.assertLess(abs(observed-images[index]), c.mpf("1e-45"))
+
     def test_invalid_and_cancelled_paths_are_explicit(self):
         event = Event()
         event.set()
@@ -131,7 +147,7 @@ class ParameterAndLoopTests(unittest.TestCase):
             parameter_circle(cancel=event)
         with self.assertRaises(RenderCancelled):
             forward_loops(self.nonreal, cancel=event)
-        for radius in ("0", "0.21", "nan"):
+        for radius in ("0", "0.51", "nan"):
             with self.assertRaises(ValueError):
                 parameter_circle(radius)
         with self.assertRaises(ValueError):

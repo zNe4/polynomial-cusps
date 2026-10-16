@@ -78,6 +78,23 @@ a complex sample, and tiny t. Real Tk tests cover selection, independent marker
 movement, export, and parameter playback without obsolete frames. See
 [PARAMETERS_AND_LOOPS.md](PARAMETERS_AND_LOOPS.md).
 
+## M03.1 — fast, wider parameter plane (implemented)
+
+- Extend the operational disk from |t| <= 0.2 to |t| <= 0.5, with shorter
+  continuation steps outside the original disk and independent radial checks.
+- Bundle numerical Taylor coefficients for the regular family variables and
+  the factored gaps/multiplier. Use them for a fast cycle-color preview and
+  as Newton predictors for selected parameters; retain full portrait checks.
+- Provide rapid/verified modes and near-g/wide presets. The free critical
+  escape mode continues to use checked family samples.
+- Pause grid verification on selection and show the requested t while the
+  previous completed dynamical frame remains visible.
+
+Acceptance includes independent radial comparisons inside the wider disk,
+closure of the outer parameter circle, preview-color checks, cancellation,
+Newton correction, distribution packaging, and real Tk selection priority.
+See [TAYLOR_AND_EXTENDED_DOMAIN.md](TAYLOR_AND_EXTENDED_DOMAIN.md).
+
 ## M04 — geometric and normalization views
 
 - Add a monic-centered dynamical view via the affine conjugacy in the proof,
@@ -92,8 +109,9 @@ movement, export, and parameter playback without obsolete frames. See
 
 - Controlled time acceleration near the parabolic cycle is not implemented.
   Spatial rescaling resolves collapsing gaps but the O(t^24) drift remains.
-- Parameter coloring is coarse numerical sampling, not a certified image of
-  the locus or a classification of the free critical orbit.
+- Parameter coloring has a fine Taylor preview and coarse checked sampling.
+  Adaptive refinement and certified region-wide error bounds remain future work;
+  neither mode certifies the locus or classifies the free critical orbit.
 - The original two-window selection and both independent loop motions are
   implemented, including the second forward image. M04 extends the geometry
   rather than being required to use those features.

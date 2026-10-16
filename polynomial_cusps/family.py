@@ -8,6 +8,9 @@ from dataclasses import dataclass, field
 import mpmath
 
 
+MAX_PARAMETER_ABS = "0.5"
+
+
 def _multiply(a, b):
     result = [0] * (len(a) + len(b) - 1)
     for i, ai in enumerate(a):
@@ -213,7 +216,7 @@ def solve_family(t="0", *, dps=60, steps=8, seed=None):
     """Continue the positive-real u(0)=4^(-1/3) branch along a radial path.
 
     t may be a real decimal string, a pair of real/imaginary decimal strings,
-    or a numeric value. |t| <= 0.2 is an operational exploration limit, not
+    or a numeric value. |t| <= 0.5 is an operational exploration limit, not
     a mathematically certified chart radius. Failure raises an exception;
     no approximation off the portrait is silently returned. An optional
     nearby FamilyPoint seed starts the continuation there; final checks
@@ -226,8 +229,9 @@ def solve_family(t="0", *, dps=60, steps=8, seed=None):
     ctx = mpmath.mp.clone()
     ctx.dps = dps + 30
     target = _parse_t(ctx, t)
-    if not ctx.isfinite(target) or abs(target) > ctx.mpf("0.2"):
-        raise ValueError("t must be finite and satisfy |t| <= 0.2")
+    # Decimal round trips on a circle may move its radius by a last-place bit.
+    if not ctx.isfinite(target) or abs(target) > ctx.mpf(MAX_PARAMETER_ABS)*(1+16*ctx.eps):
+        raise ValueError(f"t must be finite and satisfy |t| <= {MAX_PARAMETER_ABS}")
     # Orbit gaps are O(t^12). Retain dps digits below their scale.
     loss = max(0, int(ctx.ceil(-12*ctx.log10(abs(target))))) if target else 0
     ctx.dps = dps + 30 + loss
@@ -244,6 +248,8 @@ def solve_family(t="0", *, dps=60, steps=8, seed=None):
         current = _point(ctx, start, *(ctx.mpc(getattr(seed, name))
                          for name in ("u", "omega", "lam", "B")), dps)
     if target:
+        if abs(target) > ctx.mpf("0.2"):
+            steps = max(steps, int(ctx.ceil(abs(target-start)/ctx.mpf("0.025"))))
         for k in range(1, steps+1):
             tk = start+(target-start)*k/steps
             def equations(u, omega, lam, B):

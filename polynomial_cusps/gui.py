@@ -1,13 +1,15 @@
 """Tk dynamical explorer. Launch with python -m polynomial_cusps --gui."""
 
 import tkinter as tk
+from dataclasses import replace
 from tkinter import filedialog, messagebox, ttk
 
 from PIL import ImageTk
 
 from .drawing import OverlayOptions, compose, save_export
 from .jobs import BackgroundJobs
-from .rendering import RenderSettings, Viewport, prepare_scene, render
+from .family import solve_family
+from .rendering import RenderSettings, Viewport, prepare_scene, render, scene_from_point
 
 
 VIEWS = {"Global": "global", "Críticos en 0": "zero", "Críticos en 1": "one",
@@ -36,6 +38,7 @@ class Explorer:
         self.frame = None
         self.cache_key = None
         self.scene = None
+        self.parameter_window = self.loop_window = None
         self.selected = None
         self.viewport = Viewport()
         self.real, self.imag = tk.StringVar(value=real), tk.StringVar(value=imag)
@@ -43,6 +46,7 @@ class Explorer:
         self.iterations, self.resolution = tk.StringVar(value="256"), tk.StringVar(value="384")
         self.engine, self.mode = tk.StringVar(value="auto"), tk.StringVar(value="Julia")
         self.view_name = tk.StringVar(value="Global")
+        self.fixed_axes = tk.BooleanVar(value=True)
         self.flags = {name: tk.BooleanVar(value=True) for name in ("criticals", "portrait", "free", "labels", "shade")}
         self.status = tk.StringVar(value="Elige un parámetro para comenzar.")
         self.coordinate_text = tk.StringVar(value="Clic: seleccionar · arrastrar: zoom · rueda: acercar/alejar")
@@ -51,8 +55,9 @@ class Explorer:
         root.bind("<space>", self._space)
         self._closed = False
         self._poll_id = root.after(50, self._poll)
+        self._startup_ids = []
         if autostart:
-            root.after(50, self.request_render)
+            self._startup_ids = [root.after(50, self.request_render), root.after(150, self.open_parameters)]
 
     def _build(self):
         top = ttk.Frame(self.root, padding=(12, 10))
@@ -78,6 +83,8 @@ class Explorer:
             ttk.Combobox(tools, textvariable=var, values=values, width=width).pack(side="left", padx=(0, 10))
         ttk.Button(tools, text="Renderizar", command=self.request_render).pack(side="left")
         ttk.Button(tools, text="Cancelar", command=self.cancel).pack(side="left", padx=5)
+        ttk.Button(tools, text="Parámetros", command=self.open_parameters).pack(side="left", padx=3)
+        ttk.Button(tools, text="Lazos", command=self.open_loops).pack(side="left")
         body = ttk.Frame(self.root, padding=(12, 0))
         body.pack(fill="both", expand=True)
         self.canvas = tk.Canvas(body, width=self.canvas_size, height=self.canvas_size,
@@ -96,6 +103,8 @@ class Explorer:
         views = ttk.Combobox(panel, textvariable=self.view_name, values=list(VIEWS), state="readonly", width=26)
         views.pack(fill="x", pady=(7, 5))
         views.bind("<<ComboboxSelected>>", self.change_view)
+        ttk.Checkbutton(panel, text="Ejes locales sin girar", variable=self.fixed_axes,
+                        command=self.request_render).pack(anchor="w")
         zooms = ttk.Frame(panel)
         zooms.pack(fill="x", pady=(0, 10))
         for text, action in (("+", lambda: self.zoom("0.5")), ("-", lambda: self.zoom("2")),
@@ -127,7 +136,9 @@ class Explorer:
     def options(self):
         return OverlayOptions(**{name: var.get() for name, var in self.flags.items()})
 
-    def request_render(self):
+    def request_render(self, *, point=None, on_complete=None):
+        if self.parameter_window is not None and on_complete is None:
+            self.parameter_window.pause()
         try:
             real, imag, dps, orbit = self.real.get(), self.imag.get(), int(self.dps.get()), int(self.orbit.get())
             settings = RenderSettings(int(self.resolution.get()), int(self.iterations.get()), self.engine.get())
@@ -137,17 +148,22 @@ class Explorer:
             return
         key = (real, imag, dps, orbit)
         cached = self.scene if self.cache_key == key else None
-        view = self.viewport
+        view = replace(self.viewport, fixed_axes=self.fixed_axes.get() and self.viewport.kind != "global")
         self.status.set("Calculando… puedes cancelar o pedir otra vista.")
         self.progress["value"] = 0
 
         def work(cancel, progress):
-            scene = cached or prepare_scene(real, imag, dps, orbit, cancel)
+            if point is not None:
+                p = point if point.requested_dps >= dps else solve_family(
+                    (real, imag), dps=dps, steps=1, seed=point)
+                scene = scene_from_point(p, orbit, cancel)
+            else:
+                scene = cached or prepare_scene(real, imag, dps, orbit, cancel)
             effective_view = view
             if not scene.point.t and view.kind != "global":
                 effective_view = Viewport()
             result = render(scene, effective_view, settings, cancel, progress, mp_preview_size=96)
-            return scene, result, key
+            return scene, result, key, on_complete
         self.jobs.submit(work)
 
     def _poll(self):
@@ -159,11 +175,15 @@ class Explorer:
             elif kind == "error":
                 self.status.set(f"No se pudo completar: {value}. La imagen anterior sigue visible.")
             elif kind == "result":
-                scene, result, key = value
+                scene, result, key, on_complete = value
                 if self.cache_key != key:
                     self.selected = None
                 self.scene, self.frame, self.cache_key = scene, result, key
                 self.viewport = result.viewport
+                if self.parameter_window is not None:
+                    self.parameter_window.mark_selected(scene.point)
+                if self.loop_window is not None:
+                    self.loop_window.update_scene(scene)
                 self.view_name.set(next(label for label, name in VIEWS.items() if name == result.viewport.kind))
                 self.progress["value"] = 1
                 count = result.settings.size**2-result.escaped_count
@@ -175,12 +195,15 @@ class Explorer:
                     text += " El tiempo local puede crecer como |t|^(-24)."
                 self.status.set(text)
                 self.redraw()
+                if on_complete is not None:
+                    on_complete()
         self._poll_id = self.root.after(50, self._poll)
 
     def redraw(self):
         if self.frame is None:
             return
-        image = compose(self.scene, self.frame, self.options(), self.mode.get(), self.selected, self.canvas_size)
+        image = compose(self.scene, self.frame, self.options(), self.mode.get(), self.selected,
+                        self.canvas_size, self.loop_overlay())
         self.photo = ImageTk.PhotoImage(image, master=self.root)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor="nw", image=self.photo)
@@ -230,15 +253,24 @@ class Explorer:
         self.request_render()
 
     def _press(self, event):
+        if self.loop_window is not None and self.loop_window.pick_marker(event):
+            self._dragging_loop = True
+            return
         self.drag_start = (event.x, event.y)
 
     def _drag(self, event):
+        if getattr(self, "_dragging_loop", False):
+            self.loop_window.pick_marker(event, dragging=True)
+            return
         if not hasattr(self, "drag_start"):
             return
         self.canvas.delete("zoom")
         self.canvas.create_rectangle(*self.drag_start, event.x, event.y, outline="#f5d389", tags="zoom")
 
     def _release(self, event):
+        if getattr(self, "_dragging_loop", False):
+            self._dragging_loop = False
+            return
         if self.frame is None or not hasattr(self, "drag_start"):
             return
         x, y = self.drag_start
@@ -250,11 +282,11 @@ class Explorer:
             view = self.frame.viewport
             center = view.coordinate(c, str((event.x+x)/2/self.canvas_size), str((event.y+y)/2/self.canvas_size))
             self.viewport = Viewport(view.kind, c.nstr(center.real, c.dps), c.nstr(center.imag, c.dps),
-                                     c.nstr(c.mpf(view.span)*distance/self.canvas_size, c.dps))
+                                     c.nstr(c.mpf(view.span)*distance/self.canvas_size, c.dps), view.fixed_axes)
             self.request_render()
         else:
             local = self.frame.viewport.coordinate(c, str(event.x/self.canvas_size), str(event.y/self.canvas_size))
-            self.selected = (self.scene.absolute(local, self.frame.viewport.kind), 0)
+            self.selected = (self.scene.absolute(local, self.frame.viewport.kind, self.frame.viewport.fixed_axes), 0)
             self.redraw()
 
     def _motion(self, event):
@@ -299,16 +331,50 @@ class Explorer:
         path = filedialog.asksaveasfilename(parent=self.root, defaultextension=".png", filetypes=[("PNG", "*.png")])
         if path:
             try:
-                save_export(path, self.scene, self.frame, self.options(), self.mode.get(), self.selected)
+                save_export(path, self.scene, self.frame, self.options(), self.mode.get(),
+                            self.selected, self.loop_overlay())
                 self.status.set(f"Exportado: {path} y sus datos JSON.")
             except (ValueError, OSError) as error:
                 messagebox.showerror("Exportación", str(error), parent=self.root)
 
     def close(self):
         self._closed = True
+        for timer in self._startup_ids:
+            self.root.after_cancel(timer)
+        if self.parameter_window is not None:
+            self.parameter_window.close()
+        if self.loop_window is not None:
+            self.loop_window.close()
         self.root.after_cancel(self._poll_id)
         self.jobs.close()
         self.root.destroy()
+
+    def open_parameters(self):
+        if self.parameter_window is None:
+            from .parameter_gui import ParameterWindow
+            self.parameter_window = ParameterWindow(self)
+        else:
+            self.parameter_window.window.lift()
+
+    def open_loops(self):
+        if self.loop_window is None:
+            from .loop_gui import LoopWindow
+            self.loop_window = LoopWindow(self)
+        else:
+            self.loop_window.window.lift()
+        self.redraw()
+
+    def loop_overlay(self):
+        return self.loop_window.overlay() if self.loop_window is not None else None
+
+    def apply_parameter(self, t, point=None, on_complete=None):
+        c = point.ctx if point is not None else (self.scene.point.ctx if self.scene else None)
+        if c is None:
+            import mpmath
+            c = mpmath.mp
+        self.real.set(c.nstr(t.real, c.dps-15))
+        self.imag.set(c.nstr(t.imag, c.dps-15))
+        self.request_render(point=point, on_complete=on_complete)
 
 
 def main(*, real="0", imag="0", dps=60, orbit=40):

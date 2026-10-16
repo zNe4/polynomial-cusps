@@ -1,16 +1,20 @@
-# M02: dynamical explorer
+# Dynamical explorer
 
 Launch with `python -m polynomial_cusps --gui` after installing `.[gui]`
 and the operating system's Tk package. The same application is exposed as
-`polynomial-cusps-gui`. This is one dynamical window; M03 will add the
-parameter-plane image. Parameters can currently be entered numerically.
+`polynomial-cusps-gui`. The parameter window opens alongside the dynamical window. Choose t there
+or enter it numerically. See [PARAMETERS_AND_LOOPS.md](PARAMETERS_AND_LOOPS.md)
+for parameter circles and marked forward loops.
 
 ## Views and overlays
 
 The global view uses z. The other views use the four affine coordinates
 from M01.1: z=x xi, z=1+s xi, z=X+d xi, and z=Z+Delta xi. The displayed
-axes in a local view are xi, not absolute z. The complex scale carries its
-phase, so local views rotate as well as magnify the absolute dynamical plane.
+axes in a local view are xi, not absolute z. By default **Ejes locales sin girar** replaces the complex scale by its
+positive magnitude, preserving the orientation of the absolute plane while
+magnifying it. This makes critical-point rotation visible during a parameter
+circle. Disable it to restore the complex chart scale and its phase.
+The selected convention is recorded in the exported viewport's `fixed_axes`.
 
 Critical labels c1,...,c6 are preserved. Coincident screen markers are grouped
 and all their names remain in the label. At g this gives c2/c3 and c4/c5/c6.
@@ -77,7 +81,8 @@ call Tk. A failed or cancelled calculation preserves the last completed
 frame. The UI remains interactive while computing and exporting always
 uses the completed numerical scene, not text fields for a pending request.
 
-PNG export includes the visible overlay settings and selected point. The
+PNG export includes the visible overlay settings, selected point, and
+forward loops with their marked p and f(p) when enabled. The
 image uses the completed render's sampling dimensions; the on-screen canvas
 may scale that image for display. JSON metadata is embedded in the PNG and
 also written alongside it. It includes t, normalization, viewport, render
@@ -92,8 +97,10 @@ reference limits, restart of out-of-range local coordinates, cancellation,
 obsolete worker results, grouped critical identities, palette output, and
 PNG/JSON snapshot consistency.
 
-Three tests use a real Tk event loop: boundary/real/nonreal parameter changes
+Five tests use a real Tk event loop: boundary/real/nonreal parameter changes
 and all local presets; selection, iteration, zoom, toggles, and export;
-and failure/cancellation while preserving the previous frame. GitHub Actions
+failure/cancellation while preserving the previous frame; parameter selection
+and independent loop movement, including g and export; and serial parameter
+circle playback that waits for each dynamical frame. GitHub Actions
 runs all tests under Xvfb on Python 3.10, 3.12, and 3.13. Local headless runs
-skip only these three display-dependent acceptance tests.
+skip only these five display-dependent acceptance tests.

@@ -102,6 +102,59 @@ class GuiTests(unittest.TestCase):
         self.assertIs(self.app.frame, old)
         self.assertIn("cancelado", self.app.status.get())
 
+    def test_parameter_selection_and_independent_dynamic_loop_marker(self):
+        from polynomial_cusps.parameter_gui import ParameterWindow
+        self.render()
+        self.app.parameter_window = ParameterWindow(self.app, autostart=False)
+        parameters = self.app.parameter_window
+        previous = self.app.frame
+        parameters.canvas.event_generate("<ButtonPress-1>", x=parameters.size*3//4, y=parameters.size//2)
+        parameters.canvas.event_generate("<ButtonRelease-1>", x=parameters.size*3//4, y=parameters.size//2)
+        self.wait_for(lambda: self.app.frame is not previous)
+        self.assertGreater(abs(self.app.scene.point.t), 0)
+        self.app.open_loops()
+        loops = self.app.loop_window
+        old_parameter = self.app.scene.point.t
+        old_frame = self.app.frame
+        loops.set_index(31)
+        self.assertEqual(self.app.scene.point.t, old_parameter)
+        self.assertIs(self.app.frame, old_frame)  # moving p does not rerender/change f
+        self.assertEqual(self.app.loop_overlay()[1], 31)
+        self.assertEqual(float(loops.data.winding_zero.real), 3)
+        self.assertEqual(float(loops.data.winding_one.real), 4)
+        with tempfile.TemporaryDirectory() as folder:
+            import json
+            path = Path(folder)/"loops.png"
+            with patch("polynomial_cusps.gui.filedialog.asksaveasfilename", return_value=str(path)):
+                self.app.export()
+            data = json.loads(path.with_suffix(".json").read_text())
+            self.assertEqual(data["dynamic_loops"]["marker_index"], 31)
+        previous = self.app.frame
+        self.app.boundary()
+        self.wait_for(lambda: self.app.frame is not previous)
+        self.assertFalse(loops.data.t)
+        self.assertEqual(loops.index, 31)
+
+    def test_parameter_circle_playback_waits_for_dynamic_frame(self):
+        from polynomial_cusps.parameter_gui import ParameterWindow
+        self.render()
+        self.app.parameter_window = ParameterWindow(self.app, autostart=False)
+        window = self.app.parameter_window
+        window.frames.set("64")
+        window.build_circle()
+        self.wait_for(lambda: window.circle is not None)
+        self.wait_for(lambda: self.app.scene.point.t == window.circle.points[0].t)
+        window.toggle_play()
+        self.wait_for(lambda: window.index >= 1)
+        window.pause()
+        previous_index = window.index
+        self.wait_for(lambda: self.app.scene.point.t == window.circle.points[previous_index].t)
+        self.assertFalse(window.playing)
+        window.select_index(len(window.circle.points)-1)
+        self.wait_for(lambda: self.app.scene.point.t == window.circle.points[-1].t)
+        self.assertAlmostEqual(float(window.circle.windings["x"].real), 4)
+        self.assertAlmostEqual(float(window.circle.windings["s"].real), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

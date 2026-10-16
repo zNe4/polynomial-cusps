@@ -3,16 +3,14 @@
 Numerical exploration of the degree-seven parabolic counterexample whose
 critically marked portrait closure has an irreducible cusp.
 
-**Current stage: M02 — the dynamical explorer.** There is a Tk window with
-finite-time Julia/escape views, critical points, prescribed and free orbits,
-local rescaled views, point iteration, zoom, and PNG/JSON export. The
-parameter-plane image and click-to-select parameter window are planned for M03.
+**Current stage: M03 — parameter selection, parameter circles, and forward
+loops.** Two Tk windows show the normalization parameter t near g and the
+selected polynomial's dynamics. A separate loop inspector magnifies marked
+regular points p and their actual images f(p) in the dynamical plane.
 
-The intended two-plane interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn):
-select a complex parameter on the left and inspect its Julia set, marked
-critical points, prescribed orbits, and free critical orbit on the right.
-This repository currently implements the family independently; no source code
-from draw_tricorn has been copied.
+The two-plane interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn).
+This repository implements the family independently; no source code from
+draw_tricorn has been copied.
 
 ## Run
 
@@ -48,14 +46,18 @@ python -m polynomial_cusps --gui --real 0.08 --imag 0.06 --orbit 40
 ```
 
 The installed `polynomial-cusps-gui` command opens the same application.
+The dynamical and parameter windows open together.
 A graphical display is required. The numerical console remains available
 without NumPy, Pillow, or Tk.
 
-- Enter Re(t), Im(t), decimal accuracy, and free-orbit length; press **Aplicar**.
+- Click the parameter plane to choose t, or enter Re(t), Im(t), decimal
+  accuracy, and free-orbit length in the dynamical window and press **Aplicar**.
 - Use **Volver a g** to restore the boundary polynomial.
 - Choose **Global**, either critical cluster, the critical values, or the cycle.
   Local charts require nonzero t. Switching parameters preserves the current
   viewport unless returning to g makes the local chart collapse.
+- Leave **Ejes locales sin girar** enabled to see the critical points rotate
+  when the argument of t changes. The local scale is then positive real.
 - Click to select a dynamical point; use **Iterar z** or Space to apply f.
   Space retains its normal behavior in text inputs. **Elegir omega** selects
   the free critical point.
@@ -66,7 +68,39 @@ without NumPy, Pillow, or Tk.
   metadata embedded in the PNG and in a sibling JSON file. Export uses the
   completed frame, even when another parameter is being calculated.
 
-![Dynamical explorer at the boundary polynomial](docs/images/explorer.png)
+### Two independent motions
+
+- **Parameter circle:** in **Parámetros**, enter a small radius r, press
+  **Preparar vuelta**, then **Reproducir / pausa**, **Paso**, or move the
+  angle slider. This changes the polynomial along `t = r exp(i theta)`,
+  with g at t=0. The critical points follow the changing polynomial.
+- **Dynamical loops:** press **Lazos**. The blue/green source circles enclose
+  the critical groups near 0 and 1. Their marked points p0,p1 and images
+  f(p0),f(p1) are drawn on the Julia view. Use **Mover p / pausa**, the loop
+  slider, or drag on a source circle to move the marker without changing f.
+  Four auxiliary panels magnify these same dynamical curves and points.
+  Both animations can run together; changing f preserves the marker phase.
+- At **g**, use **Radio en g** to set the absolute source radius. At nearby
+  f, **Radio / escala del grupo** sets the radii relative to |x| and |s|.
+  Default loops have image winding numbers 3 and 4, respectively. These
+  numbers concern whole critical clusters; an individual simple critical
+  point has local degree 2.
+
+For a small parameter circle the measured windings are 4 for x, 3 for s,
+and 12 for both Y-X and W-Z. These parameter windings are distinct from
+moving a regular point around a dynamical loop. **Datos de vuelta** exports
+the parameter path; PNG/JSON export includes displayed dynamical loops.
+
+![Dynamical loops and marked images at g](docs/images/loops-g.png)
+
+![Parameter selection and magnified dynamical loops](docs/images/parameter-loops.png)
+
+The parameter image uses checked cell-center solutions with caching and
+continuation. Choose the portrait-constrained cycle's numerical stability
+or finite-time escape of the free critical point. The former uses a stable
+scaled multiplier defect and does not classify the free orbit. This is a
+view of the normalization t, not the ambient cusp as a planar tip. See
+[docs/PARAMETERS_AND_LOOPS.md](docs/PARAMETERS_AND_LOOPS.md).
 
 The image samples a finite iteration limit. **Sin escape observado** means
 unresolved, not proven membership. In very small local charts the entire
@@ -198,7 +232,8 @@ and is not necessarily the tau used in the exact normal form
 
 ## Numerical interpretation
 
-- The implemented range is `|t| <= 0.2`, with radial continuation from zero.
+- The implemented range is `|t| <= 0.2`, with radial continuation from zero and checked seeded continuation
+  between nearby samples.
   This is an operational limit, **not a certified neighborhood radius**.
   Convergence and residual checks are numerical, not interval proofs of
   uniqueness or of exact portrait membership.
@@ -235,6 +270,6 @@ multiplier and second return with direct high-precision computations, checks
 residual propagation on a deliberately perturbed polynomial, and exercises
 binary64 kernels and scale underflow. GitHub Actions runs it on Python 3.10,
 3.12, and 3.13, including the Tk event-loop tests under Xvfb. Without a
-display only the three Tk acceptance tests are skipped.
+display only the five Tk acceptance tests are skipped.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged graphical explorer.

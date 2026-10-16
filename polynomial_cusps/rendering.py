@@ -25,6 +25,7 @@ class Viewport:
     real: str = "0.5"
     imag: str = "0"
     span: str = "1.8"
+    fixed_axes: bool = False
 
     @classmethod
     def preset(cls, kind):
@@ -48,7 +49,7 @@ class Viewport:
         new_center = center + factor*(old_center-center)
         return Viewport(self.kind, ctx.nstr(new_center.real, ctx.dps),
                         ctx.nstr(new_center.imag, ctx.dps),
-                        ctx.nstr(ctx.mpf(self.span)*factor, ctx.dps))
+                        ctx.nstr(ctx.mpf(self.span)*factor, ctx.dps), self.fixed_axes)
 
 
 @dataclass(frozen=True)
@@ -72,15 +73,25 @@ class Scene:
     reference: RescaledFamily
     free_orbit: tuple
 
-    def absolute(self, local, kind):
+    def absolute(self, local, kind, fixed_axes=False):
         if kind == "global":
             return self.point.ctx.mpc(local)
-        return self.reference.charts[kind].at(local).absolute()
+        chart = self.reference.charts[kind]
+        if fixed_axes:
+            if not chart.available:
+                raise ValueError("This chart collapses at t=0")
+            return chart.center+abs(chart.scale.value)*local
+        return chart.at(local).absolute()
 
-    def local(self, absolute, kind):
+    def local(self, absolute, kind, fixed_axes=False):
         if kind == "global":
             return absolute
-        return self.reference.charts[kind].relative(absolute)
+        chart = self.reference.charts[kind]
+        if fixed_axes:
+            if not chart.available:
+                raise ValueError("This chart collapses at t=0")
+            return (absolute-chart.center)/abs(chart.scale.value)
+        return chart.relative(absolute)
 
     def nodes(self):
         points = {f"c{i}": z for i, z in enumerate(self.point.critical_points, 1)}
@@ -95,6 +106,12 @@ def prepare_scene(real="0", imag="0", dps=60, orbit=40, cancel=None):
         raise ValueError("Free-orbit steps must be between 0 and 5000")
     _check(cancel)
     point = solve_family((real, imag), dps=dps)
+    return scene_from_point(point, orbit, cancel)
+
+
+def scene_from_point(point, orbit=40, cancel=None):
+    if not isinstance(orbit, int) or not 0 <= orbit <= 5000:
+        raise ValueError("Free-orbit steps must be between 0 and 5000")
     _check(cancel)
     reference = RescaledFamily(point)
     values = [point.omega]
@@ -133,7 +150,7 @@ def _pixel_mp(scene, view, settings, row, col, cancel):
     p, ctx = scene.point, scene.point.ctx
     local = view.coordinate(ctx, (ctx.mpf(col)+ctx.mpf("0.5"))/settings.size,
                             (ctx.mpf(row)+ctx.mpf("0.5"))/settings.size)
-    z = scene.absolute(local, view.kind)
+    z = scene.absolute(local, view.kind, view.fixed_axes)
     bound = p.escape_radius()
     for n in range(settings.iterations+1):
         if n % 8 == 0:
@@ -154,7 +171,7 @@ def render(scene, view=Viewport(), settings=RenderSettings(), cancel=None, progr
     center, span = ctx.mpc(view.real, view.imag), ctx.mpf(view.span)
     if not ctx.isfinite(center) or not ctx.isfinite(span) or span <= 0:
         raise ValueError("Viewport coordinates must be finite with positive span")
-    physical_center = scene.absolute(center, view.kind)  # rejects collapsed charts
+    physical_center = scene.absolute(center, view.kind, view.fixed_axes)  # rejects collapsed charts
     physical_scale = 1 if view.kind == "global" else scene.reference.charts[view.kind].scale.value
     if abs(physical_scale)*span/settings.size < 32*ctx.eps*max(1, abs(physical_center)):
         raise ValueError("Pixel spacing exceeds reference precision; increase dps")
@@ -191,6 +208,9 @@ def render(scene, view=Viewport(), settings=RenderSettings(), cancel=None, progr
         return RenderResult(view, settings, engine, escaped, magnitude, 0, time.monotonic()-start)
 
     z = _grid(view, size)
+    if view.kind != "global" and view.fixed_axes:
+        scale = scene.reference.charts[view.kind].scale.value
+        z *= complex(abs(scale)/scale)
     active = np.ones((size, size), dtype=bool)
     fallback = np.zeros_like(active)
     kind = view.kind

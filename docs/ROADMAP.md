@@ -56,20 +56,26 @@ reference precision; deep zooms and scale underflow can use MP directly.
 The finite-time unresolved state remains explicit. PNG exports include the
 numerical snapshot and metadata. See [DYNAMICAL_EXPLORER.md](DYNAMICAL_EXPLORER.md).
 
-## M03 — parameter window
+## M03 — parameter selection and forward loops (implemented)
 
-- Show a neighborhood in the normalization parameter t, centered at g.
-- Click to update the dynamical window; zoom independently in both windows.
-- Color by free-critical escape or numerically detected attracting behavior.
-  Distinguish escape, detected attraction, and unresolved finite-time behavior.
-- Cache/continue family solutions across the image and add progressive
-  rendering and cancellation. Solving every pixel independently with the M01
-  reference solver is not an interactive rendering strategy.
-- Animate parameter paths and the approach to g.
+- Independent parameter window in the normalization t, with g at zero.
+- Click selection, independent zoom, progressive checked cell-center samples,
+  continuation cache, cancellation, and explicit failure/unresolved states.
+- Two color modes: stable scaled multiplier of the portrait-constrained cycle,
+  or finite-time escape of the free critical orbit. Neither is a certificate.
+- Closed parameter-circle continuation, independent closing-arc verification,
+  measured windings, serial playback, stepping, angle selection, and JSON export.
+- Fixed-orientation local charts so critical rotations remain visible.
+- Dynamical source loops and actual polynomial image loops, marked regular p
+  and f(p), animation/dragging, whole-cluster winding counts, and support at g.
+- Loop magnifications and main dynamical overlays follow f while preserving
+  the independent marker phase. PNG/JSON exports include the loop snapshot.
 
-Acceptance: stale renders cannot overwrite a later selection, and every pixel
-used in a parameter image is associated with a successfully checked family
-solution. Failed/unresolved samples remain visible as such.
+Acceptance: compare parameter windings with the collapsing exponents; compare
+forward-loop images with independent high-precision polynomial evaluation at g,
+a complex sample, and tiny t. Real Tk tests cover selection, independent marker
+movement, export, and parameter playback without obsolete frames. See
+[PARAMETERS_AND_LOOPS.md](PARAMETERS_AND_LOOPS.md).
 
 ## M04 — geometric and normalization views
 
@@ -79,4 +85,4 @@ solution. Failed/unresolved samples remain visible as such.
   lives in real dimension four in its two collision coordinates.
 - Explain that the t-plane displays the normalization and does not exhibit
   the ambient cusp as a planar tip.
-- Export parameter paths and numerical metadata alongside images.
+- Add other parameter paths, including approach-to-g paths, and richer exports.

@@ -209,13 +209,15 @@ def _parse_t(ctx, t):
     return ctx.mpc(t)
 
 
-def solve_family(t="0", *, dps=60, steps=8):
+def solve_family(t="0", *, dps=60, steps=8, seed=None):
     """Continue the positive-real u(0)=4^(-1/3) branch along a radial path.
 
     t may be a real decimal string, a pair of real/imaginary decimal strings,
     or a numeric value. |t| <= 0.2 is an operational exploration limit, not
     a mathematically certified chart radius. Failure raises an exception;
-    no approximation off the portrait is silently returned.
+    no approximation off the portrait is silently returned. An optional
+    nearby FamilyPoint seed starts the continuation there; final checks
+    are unchanged. Callers must retain the chosen local branch.
     """
     if isinstance(dps, bool) or not isinstance(dps, int) or dps < 30:
         raise ValueError("dps must be an integer >= 30")
@@ -236,9 +238,14 @@ def solve_family(t="0", *, dps=60, steps=8):
     initial = (ctx.root(ctx.mpf(1)/4, 3), ctx.mpf(3)/7,
                -1/hp, 4*a*(2*a-1)/(7*a-3))
     current = _point(ctx, ctx.mpc(0), *initial, dps)
+    start = ctx.mpc(0)
+    if seed is not None and target:
+        start = ctx.mpc(seed.t)
+        current = _point(ctx, start, *(ctx.mpc(getattr(seed, name))
+                         for name in ("u", "omega", "lam", "B")), dps)
     if target:
         for k in range(1, steps+1):
-            tk = target*k/steps
+            tk = start+(target-start)*k/steps
             def equations(u, omega, lam, B):
                 return _point(ctx, tk, u, omega, lam, B, dps).equations()
             try:

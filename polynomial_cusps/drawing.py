@@ -28,7 +28,7 @@ def _font(size):
 
 def pixel(scene, view, absolute, size):
     ctx = scene.point.ctx
-    z = scene.local(absolute, view.kind)
+    z = scene.local(absolute, view.kind, view.fixed_axes)
     center, span = ctx.mpc(view.real, view.imag), ctx.mpf(view.span)
     v = (z-center)/span
     if abs(v.real) > 2 or abs(v.imag) > 2:
@@ -51,7 +51,7 @@ def _arrow(draw, start, end, color):
                   (b[0]-7*ux-3*uy, b[1]-7*uy+3*ux)], fill=color)
 
 
-def compose(scene, result, options=OverlayOptions(), mode="Escape", selected=None, size=None):
+def compose(scene, result, options=OverlayOptions(), mode="Escape", selected=None, size=None, loops=None):
     size = size or result.settings.size
     image = Image.fromarray(colorize(result, mode, options.shade))
     if image.width != size:
@@ -123,6 +123,30 @@ def compose(scene, result, options=OverlayOptions(), mode="Escape", selected=Non
             draw.line((x-8, y, x+8, y), fill=(255, 127, 218, 255), width=2)
             draw.line((x, y-8, x, y+8), fill=(255, 127, 218, 255), width=2)
             draw.text((x+9, y+6), f"z{iteration}", font=font, fill=(255, 160, 230, 255))
+    if loops is not None:
+        data, index, group = loops
+        colors = ((115, 193, 255, 240), (110, 231, 166, 240))
+        sources = (data.zero_source, data.one_source)
+        images = (data.zero_image, data.one_image)
+        for j in range(2):
+            if group not in ("both", str(j)):
+                continue
+            for track, center, scale, image_track in (
+                (sources[j], j, data.source_scales[j], False),
+                (images[j], data.image_center, data.image_scales[j], True),
+            ):
+                previous = None
+                for value in track:
+                    pos = pixel(scene, result.viewport, center+scale*value, size)
+                    if pos and previous:
+                        draw.line((previous, pos), fill=colors[j], width=1)
+                    previous = pos
+                marked = pixel(scene, result.viewport, center+scale*track[index], size)
+                if marked:
+                    x, y = marked
+                    draw.ellipse((x-5, y-5, x+5, y+5), fill=colors[j], outline=(255, 255, 255, 255), width=1)
+                    draw.text((x+8, y+7), ("f(p" if image_track else "p")+str(j)+(")" if image_track else ""),
+                              font=font, fill=colors[j])
     title = "g · parámetro límite" if not scene.point.t else "f(t) · dinámica"
     draw.rectangle((0, 0, size, 32), fill=(9, 18, 29, 230))
     draw.text((10, 7), f"{title}  |  {result.viewport.kind}", font=font, fill=(221, 236, 244, 255))
@@ -141,7 +165,7 @@ def _encode(ctx, value):
     return ctx.nstr(value.real, ctx.dps-15)
 
 
-def metadata(scene, result, options, mode, selected):
+def metadata(scene, result, options, mode, selected, loops=None):
     return _encode(scene.point.ctx, {
         "format": "polynomial-cusps-dynamical-view-v1", "t": scene.point.t,
         "normalization": "affine: critical midpoints 0 and 1",
@@ -151,6 +175,9 @@ def metadata(scene, result, options, mode, selected):
         "unresolved_pixels": result.settings.size**2-result.escaped_count,
         "seconds": result.seconds, "overlays": asdict(options), "color_mode": mode,
         "selected_point": selected,
+        "dynamic_loops": None if loops is None else {
+            "definition": "Source circles and their actual polynomial images; parameter is fixed for this frame.",
+            "data": asdict(loops[0]), "marker_index": loops[1], "group": loops[2]},
         "coefficients_ascending": scene.point.coefficients,
         "critical_points": scene.point.critical_points, "portrait_points": scene.point.portrait_points,
         "free_orbit": scene.free_orbit, "diagnostics": scene.point.diagnostics(),
@@ -160,14 +187,14 @@ def metadata(scene, result, options, mode, selected):
     })
 
 
-def save_export(path, scene, result, options=OverlayOptions(), mode="Escape", selected=None):
+def save_export(path, scene, result, options=OverlayOptions(), mode="Escape", selected=None, loops=None):
     path = Path(path)
     if path.suffix.lower() != ".png":
         path = path.with_suffix(".png")
-    data = metadata(scene, result, options, mode, selected)
+    data = metadata(scene, result, options, mode, selected, loops)
     text = json.dumps(data, ensure_ascii=False, indent=2)
     info = PngImagePlugin.PngInfo()
     info.add_text("polynomial-cusps", text)
-    compose(scene, result, options, mode, selected).save(path, pnginfo=info)
+    compose(scene, result, options, mode, selected, loops=loops).save(path, pnginfo=info)
     path.with_suffix(".json").write_text(text+"\n", encoding="utf-8")
     return path

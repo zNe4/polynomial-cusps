@@ -14,12 +14,14 @@ from .drawing import _encode
 from .parameters import COLORS, FamilyCache, parameter_circle, parameter_grid, parameter_preview
 from .family import MAX_PARAMETER_ABS
 from .rendering import Viewport
+from .theme import SURFACE
 
 
 class ParameterWindow:
     def __init__(self, app, *, autostart=True):
         self.app = app
         self.window = tk.Toplevel(app.root)
+        self.window.configure(background=SURFACE)
         self.window.title("Polynomial Cusps · Parámetros t alrededor de g")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.window.bind("<Control-q>", app._quit)
@@ -52,7 +54,7 @@ class ParameterWindow:
         mode_combo.bind("<<ComboboxSelected>>", self.configure_sampling)
         self.sample_combo = ttk.Combobox(top, textvariable=self.samples, values=(65, 129, 257, 513), width=4)
         self.sample_combo.pack(side="left", padx=6)
-        ttk.Button(top, text="Calcular", command=self.render_grid).pack(side="left")
+        ttk.Button(top, text="Calcular", command=self.render_grid, style="Accent.TButton").pack(side="left")
         ttk.Button(top, text="Cancelar", command=self.cancel).pack(side="left", padx=3)
         quality_row = ttk.Frame(self.window, padding=(10, 0, 10, 6))
         quality_row.pack(fill="x")
@@ -60,7 +62,7 @@ class ParameterWindow:
                                      values=("Rápido: Taylor", "Verificado: Newton"), state="readonly", width=22)
         quality_combo.pack(side="left")
         quality_combo.bind("<<ComboboxSelected>>", self.configure_sampling)
-        ttk.Label(quality_row, text="Seleccionar t siempre verifica el polinomio.").pack(side="left", padx=8)
+        ttk.Label(quality_row, text="Seleccionar t siempre verifica el polinomio.", style="Muted.TLabel").pack(side="left", padx=8)
         self.canvas = tk.Canvas(self.window, width=self.size, height=self.size,
                                 bg="#0d1724", highlightthickness=1, highlightbackground="#344c60")
         self.canvas.pack(padx=10)
@@ -75,7 +77,7 @@ class ParameterWindow:
                   "Naranja: escape libre · gris: no resuelto · rojo: cálculo fallido\n"
                   "Taylor: vista aproximada del ciclo; gris incluye incertidumbre.\n"
                   "Plano t: normalización de la cúspide; g corresponde a t=0.",
-                  wraplength=self.size, padding=(10, 5)).pack(fill="x")
+                  wraplength=self.size, padding=(10, 5), style="Muted.TLabel").pack(fill="x")
         navigation = ttk.Frame(self.window, padding=(10, 0, 10, 5))
         navigation.pack(fill="x")
         ttk.Button(navigation, text="Cerca de g", command=self.reset).pack(side="left")

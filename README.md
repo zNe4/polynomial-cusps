@@ -113,7 +113,11 @@ coordinate; failures remain explicit. See
 [docs/TAYLOR_AND_EXTENDED_DOMAIN.md](docs/TAYLOR_AND_EXTENDED_DOMAIN.md) and
 [docs/PARAMETERS_AND_LOOPS.md](docs/PARAMETERS_AND_LOOPS.md).
 
-![Wider parameter plane and dynamics at t=0.45+0.2i](docs/images/wide-parameter-plane.png)
+![Dark controls, border-only checkbox hover, and dynamics at t=0.45+0.2i](docs/images/dark-controls.png)
+
+All windows share a dark theme, including dropdown lists and sliders.
+Hovering a checkbox highlights its border while preserving its background,
+label, and check mark; keyboard focus uses the same visible outline.
 
 The image samples a finite iteration limit. **Sin escape observado** means
 unresolved, not proven membership. In very small local charts the entire

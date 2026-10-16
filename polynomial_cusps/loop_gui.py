@@ -8,12 +8,14 @@ from PIL import Image, ImageDraw, ImageTk
 
 from .drawing import pixel
 from .loops import resolved_forward_loops
+from .theme import SURFACE
 
 
 class LoopWindow:
     def __init__(self, app):
         self.app = app
         self.window = tk.Toplevel(app.root)
+        self.window.configure(background=SURFACE)
         self.window.title("Lazos en el plano dinámico · p, f(p), f²(p)")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.window.bind("<Control-q>", app._quit)

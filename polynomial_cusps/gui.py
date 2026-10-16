@@ -10,6 +10,7 @@ from .drawing import OverlayOptions, compose, save_export
 from .jobs import BackgroundJobs
 from .family import solve_family
 from .rendering import RenderSettings, Viewport, prepare_scene, render, scene_from_point
+from .theme import configure_theme
 
 
 VIEWS = {"Global": "global", "Críticos en 0": "zero", "Críticos en 1": "one",
@@ -20,17 +21,7 @@ class Explorer:
     def __init__(self, root, *, autostart=True, real="0", imag="0", dps=60, orbit=40):
         self.root = root
         root.title("Polynomial Cusps · Explorador dinámico")
-        root.configure(bg="#0d1724")
-        style = ttk.Style(root)
-        style.theme_use("clam")
-        style.configure(".", background="#152232", foreground="#dce8ef", fieldbackground="#23354a")
-        style.configure("TButton", padding=(8, 5))
-        style.configure("TEntry", fieldbackground="#23354a", insertcolor="#ffffff")
-        style.configure("TCombobox", fieldbackground="#23354a", selectbackground="#34566a")
-        style.map("TCombobox", fieldbackground=[("readonly", "#23354a")],
-                  foreground=[("readonly", "#dce8ef")],
-                  selectforeground=[("readonly", "#ffffff")])
-        style.map("TButton", background=[("active", "#34566a")])
+        configure_theme(root)
         self.canvas_size = min(620, max(340, root.winfo_screenheight()-250))
         root.geometry(f"{self.canvas_size+350}x{self.canvas_size+210}")
         root.resizable(False, False)
@@ -73,7 +64,7 @@ class Explorer:
             entry = ttk.Entry(box, textvariable=variable, width=width)
             entry.pack(side="left")
             entry.bind("<Return>", lambda event: self.request_render())
-        ttk.Button(top, text="Aplicar", command=self.request_render).grid(row=0, column=4, padx=4)
+        ttk.Button(top, text="Aplicar", command=self.request_render, style="Accent.TButton").grid(row=0, column=4, padx=4)
         ttk.Button(top, text="Volver a g", command=self.boundary).grid(row=0, column=5)
         tools = ttk.Frame(self.root, padding=(12, 0, 12, 8))
         tools.pack(fill="x")
@@ -83,7 +74,7 @@ class Explorer:
             ("Motor", self.engine, ("auto", "double", "mp"), 7)):
             ttk.Label(tools, text=label).pack(side="left", padx=(0, 4))
             ttk.Combobox(tools, textvariable=var, values=values, width=width).pack(side="left", padx=(0, 10))
-        ttk.Button(tools, text="Renderizar", command=self.request_render).pack(side="left")
+        ttk.Button(tools, text="Renderizar", command=self.request_render, style="Accent.TButton").pack(side="left")
         ttk.Button(tools, text="Cancelar", command=self.cancel).pack(side="left", padx=5)
         ttk.Button(tools, text="Parámetros", command=self.open_parameters).pack(side="left", padx=3)
         ttk.Button(tools, text="Lazos", command=self.open_loops).pack(side="left")
@@ -101,7 +92,7 @@ class Explorer:
         self.canvas.bind("<Button-5>", lambda event: self.zoom("2", event))
         panel = ttk.Frame(body, padding=(14, 0))
         panel.pack(side="left", fill="both", expand=True)
-        ttk.Label(panel, text="VISTA DINÁMICA", font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
+        ttk.Label(panel, text="VISTA DINÁMICA", style="Heading.TLabel").pack(anchor="w")
         views = ttk.Combobox(panel, textvariable=self.view_name, values=list(VIEWS), state="readonly", width=26)
         views.pack(fill="x", pady=(7, 5))
         views.bind("<<ComboboxSelected>>", self.change_view)
@@ -120,14 +111,16 @@ class Explorer:
                             ("shade", "Sombrear sin escape observado")):
             ttk.Checkbutton(panel, text=label, variable=self.flags[name], command=self.redraw).pack(anchor="w")
         ttk.Label(panel, text="Azul: c2/c3 · verde: c4/c5/c6\nNaranja: omega y su órbita\nAmarillo: retrato prescrito",
-                  wraplength=280).pack(anchor="w", pady=(7, 9))
+                  wraplength=280, style="Muted.TLabel").pack(anchor="w", pady=(7, 9))
         buttons = ttk.Frame(panel)
         buttons.pack(fill="x")
         ttk.Button(buttons, text="Elegir omega", command=self.select_free).pack(side="left")
         ttk.Button(buttons, text="Iterar z · Espacio", command=self.step).pack(side="left", padx=4)
         ttk.Button(panel, text="Exportar PNG + datos", command=self.export).pack(fill="x", pady=10)
-        self.info = tk.Text(panel, width=34, height=13, wrap="word", font=("TkFixedFont", 10),
-                            bg="#0d1724", fg="#bdd3e2", relief="flat", padx=8, pady=8)
+        self.info = tk.Text(panel, width=34, height=10, wrap="word", font=("TkFixedFont", 10),
+                            bg="#0d1724", fg="#bdd3e2", relief="flat", borderwidth=0,
+                            highlightthickness=1, highlightbackground="#354b61",
+                            highlightcolor="#6ad7c5", padx=10, pady=10)
         self.info.pack(fill="both", expand=True)
         self.info.configure(state="disabled")
         ttk.Label(self.root, textvariable=self.coordinate_text, padding=(12, 5)).pack(fill="x")

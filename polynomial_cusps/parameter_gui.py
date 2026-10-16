@@ -46,6 +46,7 @@ class ParameterWindow:
         self._timer = None
         self._auto_id = None
         self._task = None
+        self._start = self._drag_end = None
         top = ttk.Frame(self.window, padding=10)
         top.pack(fill="x")
         mode_combo = ttk.Combobox(top, textvariable=self.mode, values=("Ciclo: retrato exacto", "Órbita libre: escape"),
@@ -66,8 +67,10 @@ class ParameterWindow:
         self.canvas = tk.Canvas(self.window, width=self.size, height=self.size,
                                 bg="#0d1724", highlightthickness=1, highlightbackground="#344c60")
         self.canvas.pack(padx=10)
-        self.canvas.bind("<ButtonPress-1>", lambda e: setattr(self, "_start", (e.x, e.y)))
+        self.canvas.bind("<ButtonPress-1>", self.start_selection)
+        self.canvas.bind("<B1-Motion>", self.drag_selection)
         self.canvas.bind("<ButtonRelease-1>", self.pick)
+        self.window.bind("<Escape>", self.cancel_selection)
         self.canvas.bind("<MouseWheel>", lambda e: self.zoom("0.5" if e.delta > 0 else "2", e))
         self.canvas.bind("<Button-4>", lambda e: self.zoom("0.5", e))
         self.canvas.bind("<Button-5>", lambda e: self.zoom("2", e))
@@ -114,6 +117,7 @@ class ParameterWindow:
             self._auto_id = self.window.after(100, self.render_grid)
 
     def render_grid(self):
+        self.cancel_selection()
         self.pause()
         try:
             size = int(self.samples.get())
@@ -235,6 +239,35 @@ class ParameterWindow:
         self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
         self._selection_item = None
         self._draw_selection()
+        self._draw_zoom_rectangle()
+
+    def start_selection(self, event):
+        self.canvas.focus_set()
+        self.pause()
+        if self.app.movie_window is not None:
+            self.app.movie_window.pause()
+        self.cancel_selection()
+        self._start = (event.x, event.y)
+
+    def drag_selection(self, event):
+        if self._start is not None:
+            self._drag_end = (event.x, event.y)
+            self._draw_zoom_rectangle()
+
+    def _draw_zoom_rectangle(self):
+        self.canvas.delete("parameter_zoom")
+        if self._start is not None and self._drag_end is not None:
+            x, y = self._start
+            end_x, end_y = self._drag_end
+            if max(abs(end_x-x), abs(end_y-y)) > 7:
+                self.canvas.create_rectangle(x, y, end_x, end_y,
+                    outline="#f5d389", width=2, tags="parameter_zoom")
+
+    def cancel_selection(self, event=None):
+        self._start = self._drag_end = None
+        self.canvas.delete("parameter_zoom")
+        if event is not None:
+            return "break"
 
     def _draw_selection(self):
         selection = self._position(self.selected)
@@ -267,8 +300,11 @@ class ParameterWindow:
         self.mark_selected(circle.points[index])
 
     def pick(self, event):
+        if self._start is None:
+            return
         self.pause()
-        x, y = getattr(self, "_start", (event.x, event.y))
+        x, y = self._start
+        self.cancel_selection()
         distance = max(abs(x-event.x), abs(y-event.y))
         if distance > 7:
             center = self.view.coordinate(self.ctx, str((x+event.x)/2/self.size), str((y+event.y)/2/self.size))

@@ -63,6 +63,8 @@ without NumPy, Pillow, or Tk.
   Space retains its normal behavior in text inputs. **Elegir omega** selects
   the free critical point.
 - Drag a rectangle or use the wheel / + / - buttons to zoom.
+  In the parameter plane, a gold outline previews the rectangle while dragging;
+  release to zoom, or press Escape to cancel the selection.
 - Toggle critical markers, the prescribed orbit graph, free-orbit points,
   labels, and finite-time unresolved shading separately.
 - **Exportar PNG + datos** saves the displayed numerical snapshot with

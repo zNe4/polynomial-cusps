@@ -82,7 +82,7 @@ frame. The UI remains interactive while computing and exporting always
 uses the completed numerical scene, not text fields for a pending request.
 
 PNG export includes the visible overlay settings, selected point, and
-forward loops with their marked p and f(p) when enabled. The
+forward loops with their marked p, f(p), and f²(p) when enabled. The
 image uses the completed render's sampling dimensions; the on-screen canvas
 may scale that image for display. JSON metadata is embedded in the PNG and
 also written alongside it. It includes t, normalization, viewport, render

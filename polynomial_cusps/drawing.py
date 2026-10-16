@@ -128,12 +128,14 @@ def compose(scene, result, options=OverlayOptions(), mode="Escape", selected=Non
         colors = ((115, 193, 255, 240), (110, 231, 166, 240))
         sources = (data.zero_source, data.one_source)
         images = (data.zero_image, data.one_image)
+        second_images = (data.zero_second_image, data.one_second_image)
         for j in range(2):
             if group not in ("both", str(j)):
                 continue
-            for track, center, scale, image_track in (
-                (sources[j], j, data.source_scales[j], False),
-                (images[j], data.image_center, data.image_scales[j], True),
+            for track, center, scale, label in (
+                (sources[j], j, data.source_scales[j], f"p{j}"),
+                (images[j], data.image_center, data.image_scales[j], f"f(p{j})"),
+                (second_images[j], data.second_center, data.second_scales[j], f"f^2(p{j})"),
             ):
                 previous = None
                 for value in track:
@@ -145,8 +147,7 @@ def compose(scene, result, options=OverlayOptions(), mode="Escape", selected=Non
                 if marked:
                     x, y = marked
                     draw.ellipse((x-5, y-5, x+5, y+5), fill=colors[j], outline=(255, 255, 255, 255), width=1)
-                    draw.text((x+8, y+7), ("f(p" if image_track else "p")+str(j)+(")" if image_track else ""),
-                              font=font, fill=colors[j])
+                    draw.text((x+8, y+7), label, font=font, fill=colors[j])
     title = "g · parámetro límite" if not scene.point.t else "f(t) · dinámica"
     draw.rectangle((0, 0, size, 32), fill=(9, 18, 29, 230))
     draw.text((10, 7), f"{title}  |  {result.viewport.kind}", font=font, fill=(221, 236, 244, 255))
@@ -176,7 +177,7 @@ def metadata(scene, result, options, mode, selected, loops=None):
         "seconds": result.seconds, "overlays": asdict(options), "color_mode": mode,
         "selected_point": selected,
         "dynamic_loops": None if loops is None else {
-            "definition": "Source circles and their actual polynomial images; parameter is fixed for this frame.",
+            "definition": "Source circles, first and second actual polynomial images; parameter is fixed for this frame.",
             "data": asdict(loops[0]), "marker_index": loops[1], "group": loops[2]},
         "coefficients_ascending": scene.point.coefficients,
         "critical_points": scene.point.critical_points, "portrait_points": scene.point.portrait_points,

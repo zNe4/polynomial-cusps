@@ -91,6 +91,23 @@ class ParameterAndLoopTests(unittest.TestCase):
         self.assertLess(abs(loops.winding_one-4), scene.point.ctx.mpf("1e-40"))
         self.assertGreater(abs(loops.zero_image[0]-loops.zero_image[13]), 1)
 
+    def test_second_images_match_direct_double_iteration_at_all_scales(self):
+        for scene in (self.boundary, self.nonreal, prepare_scene("1e-8", orbit=0)):
+            p, c = scene.point, scene.point.ctx
+            loops = forward_loops(scene, samples=96)
+            for group, sources, second in ((0, loops.zero_source, loops.zero_second_image),
+                                            (1, loops.one_source, loops.one_second_image)):
+                self.assertEqual(second[0], second[-1])
+                for index in (0, 13, 37, 79):
+                    z = group+loops.source_scales[group]*sources[index]
+                    # Direct high-precision evaluation is independent of the
+                    # divided composition used to construct the displayed path.
+                    observed = (p.f(p.f(z))-loops.second_center)/loops.second_scales[group]
+                    self.assertLess(abs(observed-second[index]), c.mpf("1e-50"))
+                self.assertGreater(abs(second[0]-second[13]), c.mpf("0.1"))
+            self.assertLess(abs(loops.second_winding_zero-3), c.mpf("1e-40"))
+            self.assertLess(abs(loops.second_winding_one-4), c.mpf("1e-40"))
+
     def test_nonrotating_local_axes_show_the_critical_turn(self):
         scene = self.nonreal
         c, p = scene.point.ctx, scene.point

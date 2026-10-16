@@ -122,6 +122,9 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(self.app.loop_overlay()[1], 31)
         self.assertEqual(float(loops.data.winding_zero.real), 3)
         self.assertEqual(float(loops.data.winding_one.real), 4)
+        self.assertEqual(loops.canvas.winfo_reqwidth(), 3*loops.size)
+        self.assertEqual(len(loops.data.zero_second_image), len(loops.data.zero_source))
+        self.assertEqual(float(loops.data.second_winding_one.real), 4)
         with tempfile.TemporaryDirectory() as folder:
             import json
             path = Path(folder)/"loops.png"
@@ -129,6 +132,8 @@ class GuiTests(unittest.TestCase):
                 self.app.export()
             data = json.loads(path.with_suffix(".json").read_text())
             self.assertEqual(data["dynamic_loops"]["marker_index"], 31)
+            self.assertIn("zero_second_image", data["dynamic_loops"]["data"])
+            self.assertIn("second_scales", data["dynamic_loops"]["data"])
         previous = self.app.frame
         self.app.boundary()
         self.wait_for(lambda: self.app.frame is not previous)

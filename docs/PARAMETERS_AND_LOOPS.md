@@ -81,13 +81,13 @@ This operation keeps the current f fixed. Press **Lazos** to draw circles
 around both critical groups and their actual forward images. Blue denotes
 the group near 0; green denotes the group near 1. The source markers p0,p1
 are ordinary points on these circles, distinct from the critical markers.
-Both p and f(p) are drawn over the main Julia view. The inspector's four
-panels are translated, positively rescaled magnifications of these same
-dynamical curves, with source panels on the left and image panels on the
-right. They are not another parameter space.
+The points p, f(p), and f²(p) are drawn over the main Julia view. The
+inspector's six panels are translated, positively rescaled magnifications of
+these same dynamical curves: source on the left, first image near X/Y in
+the middle, and second image near Z/W on the right. They are not another parameter space.
 
 Use **Mover p / pausa**, the loop angle slider, or click/drag on a source
-circle in the main dynamical window. Moving p updates f(p) without solving
+circle in the main dynamical window. Moving p updates both f(p) and f²(p) without solving
 another parameter or recalculating the Julia image. **Ambos grupos** or
 the group selector controls the main overlays. The two source markers use
 the same angle. **Dibujar en el Julia** controls their main-plane visibility.
@@ -105,6 +105,12 @@ positive scale |Y-X| keeps very small image loops distinguishable even at
 t=10^-8. Displaying the whole polynomial globally can make these loops
 too small to resolve, so use the magnifications or local views.
 
+The second image is composed with the divided `values_to_cycle` map,
+without materializing f(p) as a rounded absolute number. It is centered at
+Z+(W-Z)/2 and positively scaled by |W-Z|. The cycle panel marks both Z and
+W. Its winding about Z is measured separately from the first image's
+winding about X; for the default small loops it is again 3 and 4.
+
 At g the source radius is the absolute value **Radio en g**, default 0.03.
 The code evaluates the exact factored expressions
 
@@ -118,6 +124,11 @@ g(1+\epsilon\xi)-B_g
 
 without subtracting nearly equal values. Positive magnifications
 |lambda_g| epsilon^3 and |lambda_g| epsilon^4 resolve the image curves.
+The second image is evaluated by the exact Taylor polynomial of g at B_g,
+using the first displacement as input, without a subtraction of g(B_g).
+Its positive scales are |g'(B_g)| times the first-image scales. At g, Z and
+W have coalesced at the parabolic fixed point a=g(B_g); the second-image
+panels then mark Z/W together.
 
 For the default small whole-cluster loops, one positive source turn gives
 image winding **3 near 0 and 4 near 1**, measured about X (about B_g at g).
@@ -132,7 +143,7 @@ center is rejected when detected numerically.
 The parameter-circle and source-marker clocks are independent and can run
 together. On a change of f, the loop geometry follows the new polynomial
 and the marker angle is preserved. PNG/JSON export saves the completed
-dynamical scene, source/image tracks, scales, marked index, and windings.
+dynamical scene, source/first-image/second-image tracks, scales, marked index, and windings.
 
 ## Verification and limits
 
@@ -140,7 +151,9 @@ Tests compare seeded and independent radial family solutions, independently
 verify parameter-circle closure, check the 4/3/12/12 windings, and compare
 cycle coloring against a direct higher-precision multiplier. Forward-loop
 samples are checked against the original polynomial at g and a nonreal t;
-tiny-t tests verify that the divided images remain resolved. Native and MP
+tiny-t tests verify that the divided images remain resolved. Second-image
+tests compare against independent direct f(f(p)) evaluation at all three
+scales, including g and t=10^-8. Native and MP
 renderers agree for fixed-orientation axes. Real Tk acceptance covers
 selection, independent marker movement, g, export, and serial playback.
 

@@ -6,7 +6,7 @@ critically marked portrait closure has an irreducible cusp.
 **Current stage: M03 — parameter selection, parameter circles, and forward
 loops.** Two Tk windows show the normalization parameter t near g and the
 selected polynomial's dynamics. A separate loop inspector magnifies marked
-regular points p and their actual images f(p) in the dynamical plane.
+regular points p and their actual images f(p), f²(p) in the dynamical plane.
 
 The two-plane interaction follows [draw_tricorn](https://github.com/zNe4/draw_tricorn).
 This repository implements the family independently; no source code from
@@ -76,9 +76,10 @@ without NumPy, Pillow, or Tk.
   with g at t=0. The critical points follow the changing polynomial.
 - **Dynamical loops:** press **Lazos**. The blue/green source circles enclose
   the critical groups near 0 and 1. Their marked points p0,p1 and images
-  f(p0),f(p1) are drawn on the Julia view. Use **Mover p / pausa**, the loop
+  f(p0),f(p1), and f²(p0),f²(p1) are drawn on the Julia view. Use **Mover p / pausa**, the loop
   slider, or drag on a source circle to move the marker without changing f.
-  Four auxiliary panels magnify these same dynamical curves and points.
+  Six auxiliary panels magnify these same dynamical curves and points: source,
+  first image near X/Y, and second image near the cycle Z/W.
   Both animations can run together; changing f preserves the marker phase.
 - At **g**, use **Radio en g** to set the absolute source radius. At nearby
   f, **Radio / escala del grupo** sets the radii relative to |x| and |s|.
@@ -88,7 +89,9 @@ without NumPy, Pillow, or Tk.
 
 For a small parameter circle the measured windings are 4 for x, 3 for s,
 and 12 for both Y-X and W-Z. These parameter windings are distinct from
-moving a regular point around a dynamical loop. **Datos de vuelta** exports
+moving a regular point around a dynamical loop. The second images are
+computed with the divided values-to-cycle map, so tiny cycle separations
+remain visible. **Datos de vuelta** exports
 the parameter path; PNG/JSON export includes displayed dynamical loops.
 
 ![Dynamical loops and marked images at g](docs/images/loops-g.png)

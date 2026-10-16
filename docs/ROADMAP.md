@@ -66,8 +66,9 @@ numerical snapshot and metadata. See [DYNAMICAL_EXPLORER.md](DYNAMICAL_EXPLORER.
 - Closed parameter-circle continuation, independent closing-arc verification,
   measured windings, serial playback, stepping, angle selection, and JSON export.
 - Fixed-orientation local charts so critical rotations remain visible.
-- Dynamical source loops and actual polynomial image loops, marked regular p
-  and f(p), animation/dragging, whole-cluster winding counts, and support at g.
+- Dynamical source loops and actual first/second polynomial images, marked
+  regular p, f(p), f²(p), animation/dragging, whole-cluster winding counts,
+  and support at g. Second images use stable divided maps near the 2-cycle.
 - Loop magnifications and main dynamical overlays follow f while preserving
   the independent marker phase. PNG/JSON exports include the loop snapshot.
 
@@ -86,3 +87,13 @@ movement, export, and parameter playback without obsolete frames. See
 - Explain that the t-plane displays the normalization and does not exhibit
   the ambient cusp as a planar tip.
 - Add other parameter paths, including approach-to-g paths, and richer exports.
+
+## Remaining numerical work
+
+- Controlled time acceleration near the parabolic cycle is not implemented.
+  Spatial rescaling resolves collapsing gaps but the O(t^24) drift remains.
+- Parameter coloring is coarse numerical sampling, not a certified image of
+  the locus or a classification of the free critical orbit.
+- The original two-window selection and both independent loop motions are
+  implemented, including the second forward image. M04 extends the geometry
+  rather than being required to use those features.

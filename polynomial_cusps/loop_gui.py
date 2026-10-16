@@ -14,9 +14,10 @@ class LoopWindow:
     def __init__(self, app):
         self.app = app
         self.window = tk.Toplevel(app.root)
-        self.window.title("Lazos en el plano dinámico · p y f(p)")
+        self.window.title("Lazos en el plano dinámico · p, f(p), f²(p)")
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.size = min(270, max(190, (app.root.winfo_screenheight()-300)//2))
+        self.size = min(270, max(150, (app.root.winfo_screenheight()-300)//2),
+                        max(150, (app.root.winfo_screenwidth()-60)//3))
         self.factor, self.epsilon = tk.StringVar(value="2.5"), tk.StringVar(value="0.03")
         self.group = tk.StringVar(value="Ambos grupos")
         self.show = tk.BooleanVar(value=True)
@@ -30,7 +31,7 @@ class LoopWindow:
         for label, var in (("Radio / escala del grupo", self.factor), ("Radio en g", self.epsilon)):
             ttk.Label(top, text=label).pack(side="left", padx=(0, 3))
             ttk.Entry(top, textvariable=var, width=6).pack(side="left", padx=(0, 8))
-        ttk.Button(top, text="Aplicar", command=lambda: self.update_scene(app.scene)).pack(side="left")
+        ttk.Button(top, text="Aplicar", command=self.apply).pack(side="left")
         row = ttk.Frame(self.window, padding=(8, 0))
         row.pack(fill="x")
         ttk.Checkbutton(row, text="Dibujar en el Julia", variable=self.show, command=app.redraw).pack(side="left")
@@ -39,14 +40,14 @@ class LoopWindow:
         combo.pack(side="left", padx=8)
         combo.bind("<<ComboboxSelected>>", lambda e: app.redraw())
         ttk.Button(row, text="Mover p / pausa", command=self.toggle_play).pack(side="left")
-        self.canvas = tk.Canvas(self.window, width=2*self.size, height=2*self.size, bg="#0d1724", highlightthickness=0)
+        self.canvas = tk.Canvas(self.window, width=3*self.size, height=2*self.size, bg="#0d1724", highlightthickness=0)
         self.canvas.pack(padx=8, pady=8)
         self.slider = ttk.Scale(self.window, from_=0, to=360, command=self.scrub)
         self.slider.pack(fill="x", padx=10)
-        ttk.Label(self.window, textvariable=self.status, padding=10, wraplength=2*self.size).pack(fill="x")
-        ttk.Label(self.window, text="Izquierda: lazos fuente. Derecha: imágenes bajo el mismo f.\n"
+        ttk.Label(self.window, textvariable=self.status, padding=10, wraplength=3*self.size).pack(fill="x")
+        ttk.Label(self.window, text="Columnas: p → f(p), cerca de X/Y → f²(p), cerca de Z/W.\n"
                   "Ampliaciones del plano dinámico con ejes sin girar. Arrastra p en el Julia o usa el deslizador.",
-                  padding=(10, 0, 10, 10), wraplength=2*self.size).pack(fill="x")
+                  padding=(10, 0, 10, 10), wraplength=3*self.size).pack(fill="x")
         self.update_scene(app.scene)
 
     def update_scene(self, scene):
@@ -59,6 +60,10 @@ class LoopWindow:
             return
         self.data, self.scene = data, scene
         self.redraw()
+
+    def apply(self):
+        self.update_scene(self.app.scene)
+        self.app.redraw()
 
     @property
     def index(self):
@@ -74,23 +79,29 @@ class LoopWindow:
         if self.data is None:
             return
         d, size = self.data, self.size
-        image = Image.new("RGB", (2*size, 2*size), "#0d1724")
+        image = Image.new("RGB", (3*size, 2*size), "#0d1724")
         draw = ImageDraw.Draw(image)
-        specs = ((d.zero_source, d.zero_criticals, "Grupo en 0: p0", "#73c1ff"),
-                 (d.zero_image, d.targets, "Imagen: f(p0)", "#73c1ff"),
-                 (d.one_source, d.one_criticals, "Grupo en 1: p1", "#6ee7a6"),
-                 (d.one_image, d.targets, "Imagen: f(p1)", "#6ee7a6"))
-        for panel, (track, criticals, title, color) in enumerate(specs):
-            ox, oy = panel % 2*size, panel//2*size
+        specs = ((d.zero_source, d.zero_criticals, "Grupo en 0: p0", "#73c1ff", None),
+                 (d.zero_image, d.targets, "Imagen: f(p0)", "#73c1ff", ("X", "Y")),
+                 (d.zero_second_image, d.second_targets, "Segunda: f^2(p0)", "#73c1ff", ("Z", "W")),
+                 (d.one_source, d.one_criticals, "Grupo en 1: p1", "#6ee7a6", None),
+                 (d.one_image, d.targets, "Imagen: f(p1)", "#6ee7a6", ("X", "Y")),
+                 (d.one_second_image, d.second_targets, "Segunda: f^2(p1)", "#6ee7a6", ("Z", "W")))
+        for panel, (track, criticals, title, color, names) in enumerate(specs):
+            ox, oy = panel % 3*size, panel//3*size
             bound = max(1e-100, max(abs(complex(v)) for v in track+criticals))*1.2
             def pos(v):
                 z = complex(v)/bound
                 return ox+size*(0.5+0.42*z.real), oy+size*(0.53-0.42*z.imag)
             draw.rectangle((ox+1, oy+1, ox+size-1, oy+size-1), outline="#30465b")
             draw.line([pos(v) for v in track], fill=color, width=2)
-            for v in criticals:
+            for n, v in enumerate(criticals):
                 x, y = pos(v)
                 draw.ellipse((x-3, y-3, x+3, y+3), fill="#ffdc84")
+                if names is not None:
+                    label = "/".join(names) if criticals[0] == criticals[1] else names[n]
+                    if criticals[0] != criticals[1] or n == 0:
+                        draw.text((x+5, y+4), label, fill="#ffdc84")
             x, y = pos(track[self.index])
             draw.ellipse((x-5, y-5, x+5, y+5), fill=color, outline="white")
             draw.text((ox+8, oy+8), title, fill="#e3edf3")
@@ -101,8 +112,10 @@ class LoopWindow:
         turns = self.raw_index/(len(d.zero_source)-1)
         self.status.set(f"f fijo en este fotograma: t = {c.nstr(d.t, 7)}\n"
                         f"Vueltas de la imagen por vuelta fuente: grupo 0 = {float(d.winding_zero.real):.0f}; "
-                        f"grupo 1 = {float(d.winding_one.real):.0f}. Giro marcado: {turns:.2f} vueltas.\n"
-                        "Los críticos amarillos no son los marcadores móviles p0 y p1.")
+                        f"grupo 1 = {float(d.winding_one.real):.0f}. "
+                        f"Segunda imagen sobre Z: {float(d.second_winding_zero.real):.0f} y "
+                        f"{float(d.second_winding_one.real):.0f}. Giro marcado: {turns:.2f} vueltas.\n"
+                        "Amarillo: críticos o puntos del retrato. Color: p, f(p), f²(p).")
 
     def set_index(self, raw_index):
         self.raw_index = max(0, raw_index)
